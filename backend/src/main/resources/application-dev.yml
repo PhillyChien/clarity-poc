@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clarity_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# JWT configuration
+jwt:
+  secret: dev_jwt_secret_key_not_for_production
+  expiration-ms: 86400000  # 24 hours
+
+# Server configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# Logging
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.hibernate: INFO
+    org.hibernate.SQL: DEBUG
+    com.aifinancial.clarity.poc: DEBUG 

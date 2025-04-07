@@ -84,30 +84,78 @@ The application follows a decoupled architecture orchestrated by Docker Compose:
 * The Azure Clarity tracking script is embedded within the frontend application container.
 * It actively monitors user interactions for analysis in the Azure Clarity dashboard.
 
-### Running the Project Locally (All Services)
+## Running the Project
+
+### Development Environment 
+
+For local development, we provide a dedicated setup to make the development process easier:
+
+1. **Prerequisites:**
+   * Docker and Docker Compose installed (for PostgreSQL database)
+   * Java 17 (for running the backend directly)
+   * Node.js (for frontend development, when implemented)
+
+2. **Starting the Development Environment:**
+   * Use the provided script to start the development environment:
+     ```bash
+     ./start-dev.sh
+     ```
+   * This script will:
+     * Start a PostgreSQL database in a Docker container
+     * Start pgAdmin for database management
+     * Launch the backend application with the development profile
+     
+3. **Development Services:**
+   * **PostgreSQL:** `localhost:5432` (credentials: postgres/postgres)
+   * **pgAdmin:** `http://localhost:5050` (login with admin@example.com / admin123)
+   * **Backend API:** `http://localhost:8080/api`
+
+4. **Manual Development Setup:**
+   If you prefer to start services manually:
+   * Start the database:
+     ```bash
+     docker-compose -f docker-compose.dev.yml up -d
+     ```
+   * Start the backend (from the backend directory):
+     ```bash
+     cd backend
+     ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+     ```
+
+5. **Running Tests:**
+   * Tests use H2 in-memory database and can be run without Docker:
+     ```bash
+     cd backend
+     ./mvnw test
+     ```
+
+### Production Environment
 
 The entire project stack (Frontend, Backend, Docs, Database) is designed to run locally using a single Docker Compose command.
 
-1.  **Prerequisites:**
-    * Docker installed
-    * Docker Compose installed
-2.  **Environment Configuration:**
-    * Ensure you have `Dockerfile`s present in the `backend`, `frontend`, and `docs` directories.
-    * Copy any `.env.example` files to `.env` in the project root and configure necessary variables (e.g., Database credentials, JWT secret).
-3.  **Build and Run:**
-    * Navigate to the project's root directory (where the `docker-compose.yml` file is located).
-    * Run the command:
-        ```bash
-        docker-compose up --build -d
-        ```
-    * This command will:
-        * Build the images for the frontend, backend, docs, and database (if not already built).
-        * Start all services in detached mode.
-        * Run Flyway migrations automatically when the backend starts.
-4.  **Accessing the Services:**
-    * **Frontend:** `http://localhost:3000` (or the port configured in `docker-compose.yml`)
-    * **Backend API:** `http://localhost:8080` (or the port configured)
-    * **Docs Site:** `http://localhost:8081` (or the port configured - *Note: This example assumes the docs container serves on port 80/3000 internally and is mapped to host 8081*)
+1. **Prerequisites:**
+   * Docker installed
+   * Docker Compose installed
+   
+2. **Environment Configuration:**
+   * Ensure you have `Dockerfile`s present in the `backend`, `frontend`, and `docs` directories.
+   * Copy any `.env.example` files to `.env` in the project root and configure necessary variables (e.g., Database credentials, JWT secret).
+   
+3. **Build and Run:**
+   * Navigate to the project's root directory (where the `docker-compose.yml` file is located).
+   * Run the command:
+     ```bash
+     docker-compose up --build -d
+     ```
+   * This command will:
+     * Build the images for the frontend, backend, docs, and database (if not already built).
+     * Start all services in detached mode.
+     * Run Flyway migrations automatically when the backend starts.
+     
+4. **Accessing the Services:**
+   * **Frontend:** `http://localhost:3000` (or the port configured in `docker-compose.yml`)
+   * **Backend API:** `http://localhost:8080/api` (or the port configured)
+   * **Docs Site:** `http://localhost:8081` (or the port configured - *Note: This example assumes the docs container serves on port 80/3000 internally and is mapped to host 8081*)
 
 *(Adjust port numbers based on your actual `docker-compose.yml` configuration.)*
 
