@@ -5,6 +5,13 @@ import com.aifinancial.clarity.poc.dto.request.RegisterRequest;
 import com.aifinancial.clarity.poc.dto.response.JwtResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/auth")
 @CrossOrigin(origins = "*", maxAge = 3600)
+@Tag(name = "Authentication", description = "User authentication and registration APIs")
 public class AuthController {
     private final AuthService authService;
 
@@ -20,13 +28,32 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+    @Operation(summary = "Authenticate user", 
+               description = "Authenticates a user with username and password, returns JWT token")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Authentication successful", 
+                     content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+        @ApiResponse(responseCode = "400", description = "Invalid input")
+    })
+    public ResponseEntity<JwtResponse> login(
+            @Parameter(description = "Login credentials", required = true)
+            @Valid @RequestBody LoginRequest loginRequest) {
         JwtResponse jwtResponse = authService.authenticateUser(loginRequest);
         return ResponseEntity.ok(jwtResponse);
     }
 
     @PostMapping("/register")
-    public ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
+    @Operation(summary = "Register new user", 
+               description = "Registers a new user with NORMAL role")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Registration successful", 
+                     content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid input or username/email already taken")
+    })
+    public ResponseEntity<MessageResponse> register(
+            @Parameter(description = "Registration details", required = true)
+            @Valid @RequestBody RegisterRequest registerRequest) {
         MessageResponse messageResponse = authService.registerUser(registerRequest);
         return ResponseEntity.ok(messageResponse);
     }
