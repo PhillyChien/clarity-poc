@@ -185,58 +185,62 @@ This roadmap outlines the suggested phases and steps to build the project sequen
 15. Implement Todo CRUD APIs (Controller, Service, Repository) with ownership authorization checks.
 16. Test backend API endpoints.
 
-**Phase 3: Backend - Advanced Features (Admin/Moderator)**
-17. Implement Admin endpoint: List Users.
-18. Implement Admin endpoint: Promote User Role.
-19. Implement Moderator endpoint: View All Folders.
-20. Implement Moderator endpoint: View All Todos.
-21. Implement Moderator endpoint: Disable/Enable Todo.
-22. Refine endpoint authorization (`@PreAuthorize`).
-23. Test admin/moderator API endpoints.
+**Phase 3: Backend - Enable Swagger**
+17. Add Swagger dependencies.
+18. Configure Swagger UI.
 
-**Phase 4: Frontend - Setup & Basic UI**
-24. Initialize React project (Vite/CRA) with TypeScript.
-25. Install dependencies: `tailwindcss`, `axios`/`Workspace`, `react-router-dom`, `zustand`.
-26. Set up Tailwind CSS & Shadcn/ui.
-27. Configure basic routing (`react-router-dom`).
-28. Create Layout components (Navbar, etc.) and placeholder Page components.
-29. Build Login & Registration UI forms.
+**Phase 4: Backend - Advanced Features (Admin/Moderator)**
+18. Implement Admin endpoint: List Users.
+19. Implement Admin endpoint: Promote User Role.
+20. Implement Moderator endpoint: View All Folders.
+21. Implement Moderator endpoint: View All Todos.
+22. Implement Moderator endpoint: Disable/Enable Todo.
+23. Refine endpoint authorization (`@PreAuthorize`).
+24. Test admin/moderator API endpoints.
 
-**Phase 5: Frontend - Authentication & State**
-30. Create API service layer for backend communication.
-31. Set up **Zustand** store(s) for managing authentication state, user info, and potentially JWT storage/retrieval logic.
-32. Implement Login flow (call API, update Zustand store, handle JWT, redirect).
-33. Implement Registration flow (call API).
-34. Implement Logout flow (clear Zustand store/JWT, redirect).
-35. Implement Protected Routes based on Zustand state.
+**Phase 5: Frontend - Setup & Basic UI**
+25. Initialize React project (Vite/CRA) with TypeScript.
+26. Install dependencies: `tailwindcss`, `axios`/`Workspace`, `react-router-dom`, `zustand`.
+27. Set up Tailwind CSS & Shadcn/ui.
+28. Configure basic routing (`react-router-dom`).
+29. Create Layout components (Navbar, etc.) and placeholder Page components.
+30. Build Login & Registration UI forms.
 
-**Phase 6: Frontend - Core Features (Todo/Folder)**
-36. Implement Folder API service calls & UI components (List, Create, Update, Delete). Integrate with Zustand state.
-37. Implement Todo API service calls & UI components (List, Create, Update, Delete). Integrate with Zustand state.
-38. Connect UI to Zustand state and API calls. Handle loading/error states possibly via Zustand.
+**Phase 6: Frontend - Authentication & State**
+31. Create API service layer for backend communication.
+32. Set up **Zustand** store(s) for managing authentication state, user info, and potentially JWT storage/retrieval logic.
+33. Implement Login flow (call API, update Zustand store, handle JWT, redirect).
+34. Implement Registration flow (call API).
+35. Implement Logout flow (clear Zustand store/JWT, redirect).
+36. Implement Protected Routes based on Zustand state.
 
-**Phase 7: Frontend - Advanced Features (Admin/Moderator)**
-39. Implement Role-Based Rendering using user role from Zustand store.
-40. Create Admin UI: User list, Promote button functionality (calling API, updating state).
-41. Create Moderator UI enhancements: View all Folders/Todos, Disable/Enable Todo functionality (calling API, updating state).
+**Phase 7: Frontend - Core Features (Todo/Folder)**
+37. Implement Folder API service calls & UI components (List, Create, Update, Delete). Integrate with Zustand state.
+38. Implement Todo API service calls & UI components (List, Create, Update, Delete). Integrate with Zustand state.
+39. Connect UI to Zustand state and API calls. Handle loading/error states possibly via Zustand.
 
-**Phase 8: Azure Clarity Integration**
-42. Set up Azure Clarity project & get tracking code.
-43. Integrate tracking code into the React application.
-44. Verify data flow in the Clarity dashboard.
+**Phase 8: Frontend - Advanced Features (Admin/Moderator)**
+40. Implement Role-Based Rendering using user role from Zustand store.
+41. Create Admin UI: User list, Promote button functionality (calling API, updating state).
+42. Create Moderator UI enhancements: View all Folders/Todos, Disable/Enable Todo functionality (calling API, updating state).
 
-**Phase 9: Documentation Site**
-45. Initialize Astro project in `docs` folder & add Starlight.
-46. Configure Starlight (sidebar, title).
-47. Write documentation content (.md/.mdx files).
-48. **Create `Dockerfile` for Docs site** (Build static files, use Nginx or `serve` to host them).
-49. Test docs site build/dev server locally.
+**Phase 9: Azure Clarity Integration**
+43. Set up Azure Clarity project & get tracking code.
+44. Integrate tracking code into the React application.
+45. Verify data flow in the Clarity dashboard.
 
-**Phase 10: Finalization & Dockerization**
-50. Optimize backend `Dockerfile` (multi-stage builds).
-51. Create optimized frontend `Dockerfile` (multi-stage build with Nginx or serve).
-52. **Update `docker-compose.yml` to include the `docs` service**, using its Dockerfile and mapping appropriate ports (e.g., map host port 8081 to the container's serving port).
-53. Finalize `docker-compose.yml` (env vars via `.env`, service dependencies `depends_on` if needed).
-54. Perform comprehensive End-to-End testing of all three services via `docker-compose up`.
-55. Code review, cleanup, add comments.
-56. Final `README.md` updates (verify ports, instructions).
+**Phase 10: Documentation Site**
+46. Initialize Astro project in `docs` folder & add Starlight.
+47. Configure Starlight (sidebar, title).
+48. Write documentation content (.md/.mdx files).
+49. **Create `Dockerfile` for Docs site** (Build static files, use Nginx or `serve` to host them).
+50. Test docs site build/dev server locally.
+
+**Phase 11: Finalization & Dockerization**
+51. Optimize backend `Dockerfile` (multi-stage builds).
+52. Create optimized frontend `Dockerfile` (multi-stage build with Nginx or serve).
+53. **Update `docker-compose.yml` to include the `docs` service**, using its Dockerfile and mapping appropriate ports (e.g., map host port 8081 to the container's serving port).
+54. Finalize `docker-compose.yml` (env vars via `.env`, service dependencies `depends_on` if needed).
+55. Perform comprehensive End-to-End testing of all three services via `docker-compose up`.
+56. Code review, cleanup, add comments.
+57. Final `README.md` updates (verify ports, instructions).

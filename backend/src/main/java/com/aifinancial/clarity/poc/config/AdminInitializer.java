@@ -27,12 +27,11 @@ public class AdminInitializer {
         return args -> {
             // Check if the Super Admin user exists already
             if (!userRepository.existsByUsername("admin")) {
-                User superAdmin = User.builder()
-                        .username("admin")
-                        .email("admin@example.com")
-                        .password(passwordEncoder.encode("admin123"))
-                        .role(Role.SUPER_ADMIN)
-                        .build();
+                User superAdmin = new User();
+                superAdmin.setUsername("admin");
+                superAdmin.setEmail("admin@example.com");
+                superAdmin.setPassword(passwordEncoder.encode("admin123"));
+                superAdmin.setRole(Role.SUPER_ADMIN);
 
                 userRepository.save(superAdmin);
                 System.out.println("Super Admin user created successfully!");

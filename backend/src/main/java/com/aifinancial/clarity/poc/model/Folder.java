@@ -17,29 +17,24 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
-public class User {
+@Table(name = "folders")
+public class Folder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
-    private String username;
+    @Column(nullable = false, length = 100)
+    private String name;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String email;
+    @Column(length = 255)
+    private String description;
 
-    @Column(nullable = false)
-    private String password;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User owner;
 
-    @Column(nullable = false)
-    private String role;
-    
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Folder> folders = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Todo> todos = new ArrayList<>();
 
     @CreationTimestamp
@@ -49,12 +44,4 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
-    
-    public Role getRole() {
-        return Role.valueOf(this.role);
-    }
-    
-    public void setRole(Role role) {
-        this.role = role.name();
-    }
-}
+} 

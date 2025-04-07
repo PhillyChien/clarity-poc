@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -59,25 +60,29 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public MessageResponse registerUser(RegisterRequest registerRequest) {
-        if (userRepository.existsByUsername(registerRequest.getUsername())) {
-            return new MessageResponse("Error: Username is already taken!");
+        try {
+            if (userRepository.existsByUsername(registerRequest.getUsername())) {
+                return new MessageResponse("Error: Username is already taken!");
+            }
+
+            if (userRepository.existsByEmail(registerRequest.getEmail())) {
+                return new MessageResponse("Error: Email is already in use!");
+            }
+
+            // 創建新用戶
+            User user = new User();
+            user.setUsername(registerRequest.getUsername());
+            user.setEmail(registerRequest.getEmail());
+            user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+            user.setRole(Role.NORMAL);
+
+            userRepository.save(user);
+
+            return new MessageResponse("User registered successfully!");
+        } catch (Exception e) {
+            return new MessageResponse("Registration failed: " + e.getMessage());
         }
-
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            return new MessageResponse("Error: Email is already in use!");
-        }
-
-        // Create new user's account with NORMAL role
-        User user = User.builder()
-                .username(registerRequest.getUsername())
-                .email(registerRequest.getEmail())
-                .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .role(Role.NORMAL)
-                .build();
-
-        userRepository.save(user);
-
-        return new MessageResponse("User registered successfully!");
     }
 } 

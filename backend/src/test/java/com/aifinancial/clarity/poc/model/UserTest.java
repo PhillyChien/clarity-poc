@@ -9,13 +9,12 @@ public class UserTest {
 
     @Test
     public void testUserBuilder() {
-        User user = User.builder()
-                .id(1L)
-                .username("testuser")
-                .email("test@example.com")
-                .password("password")
-                .role(Role.NORMAL)
-                .build();
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("testuser");
+        user.setEmail("test@example.com");
+        user.setPassword("password");
+        user.setRole(Role.NORMAL);
         
         assertNotNull(user);
         assertEquals(1L, user.getId());
