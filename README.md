@@ -189,7 +189,7 @@ This roadmap outlines the suggested phases and steps to build the project sequen
 17. Add Swagger dependencies.
 18. Configure Swagger UI.
 
-**Phase 4: Backend - Advanced Features (Admin/Moderator)**
+**Phase 4: Backend - Admin/Moderator Features**
 18. Implement Admin endpoint: List Users.
 19. Implement Admin endpoint: Promote User Role.
 20. Implement Moderator endpoint: View All Folders.
