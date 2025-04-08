@@ -198,49 +198,68 @@ This roadmap outlines the suggested phases and steps to build the project sequen
 23. Refine endpoint authorization (`@PreAuthorize`).
 24. Test admin/moderator API endpoints.
 
-**Phase 5: Frontend - Setup & Basic UI**
-25. Initialize React project (Vite/CRA) with TypeScript.
-26. Install dependencies: `tailwindcss`, `axios`/`Workspace`, `react-router-dom`, `zustand`.
+**Phase 5: Frontend - Setup**
+25. Initialize React project (Vite/CRA) with TypeScript called `frontend`.
+26. Install dependencies: `tailwindcss`, `react-router`, `zustand`.
 27. Set up Tailwind CSS & Shadcn/ui.
-28. Configure basic routing (`react-router-dom`).
-29. Create Layout components (Navbar, etc.) and placeholder Page components.
-30. Build Login & Registration UI forms.
+28. Configure basic routing (`react-router`).
+29. Build Login & Registration UI forms.
+30. Setup biome config under `frontend` folder.
+31. Complete frontend README.md
 
-**Phase 6: Frontend - Authentication & State**
-31. Create API service layer for backend communication.
-32. Set up **Zustand** store(s) for managing authentication state, user info, and potentially JWT storage/retrieval logic.
-33. Implement Login flow (call API, update Zustand store, handle JWT, redirect).
-34. Implement Registration flow (call API).
-35. Implement Logout flow (clear Zustand store/JWT, redirect).
-36. Implement Protected Routes based on Zustand state.
+**Phase 6: Frontend - Service Layer & State Management**
+32. Create API service layer for backend communication.
+33. Set up **Zustand** store(s) for managing state.
+34. Implement Zustand store(s).
 
-**Phase 7: Frontend - Core Features (Todo/Folder)**
-37. Implement Folder API service calls & UI components (List, Create, Update, Delete). Integrate with Zustand state.
-38. Implement Todo API service calls & UI components (List, Create, Update, Delete). Integrate with Zustand state.
-39. Connect UI to Zustand state and API calls. Handle loading/error states possibly via Zustand.
+**Phase 7: Frontend - Login/Registration**
+35. Build Login (LoginPage, LoginForm) & Registration (RegisterPage, RegisterForm) UI components using Shadcn.
+36. Implement authService functions (loginUser, registerUser) using apiClient.
+37. Implement Login flow: Connect UI form -> call authService.loginUser -> update authStore (token, user) -> handle JWT storage -> redirect to /todos. Handle loading/error states.
+38. Implement Registration flow: Connect UI form -> call authService.registerUser -> handle success (e.g., redirect to login) / error states.
+39. Implement ProtectedRoute component (basic check for isAuthenticated from authStore). Apply to /todos.
 
-**Phase 8: Frontend - Advanced Features (Admin/Moderator)**
-40. Implement Role-Based Rendering using user role from Zustand store.
-41. Create Admin UI: User list, Promote button functionality (calling API, updating state).
-42. Create Moderator UI enhancements: View all Folders/Todos, Disable/Enable Todo functionality (calling API, updating state).
+**Phase 8: Frontend - Todo**
+40. Implement MainLayout component (Header, Sidebar placeholder, Content Area). Include Header logic for displaying user info and Logout button.
+41. Implement Logout functionality (clear authStore, clear token storage, redirect to /login).
+42. Implement folderService (fetch, create, update, delete). Implement folderStore actions calling the service and updating state.
+43. Implement FolderTree/FolderList component: Fetch/display folders from folderStore, handle selection (update uiStore), implement Create/Rename/Delete actions (trigger modals, call folderService, update folderStore). Handle folder loading/error/empty states.
+44. Implement todoService (fetchByFolder, create, update, delete, toggleComplete). Implement todoStore actions calling the service and updating state.
+45. Implement TodoList component: Fetch/display todos based on selected folder (from uiStore & todoStore), handle loading/error/empty states.
+46. Implement TodoItem component: Display todo data, handle completion toggle (call todoService, update todoStore), handle delete (confirmation, call todoService, update todoStore), trigger edit (open detail modal).
+47. Implement AddTodoForm component: Input + submit logic (call todoService.createTodo with selected folder context, update todoStore).
+48. (Optional) Implement TodoDetailModal: Form for comprehensive editing, triggered from TodoItem, calls todoService.updateTodo, updates todoStore.
 
-**Phase 9: Azure Clarity Integration**
-43. Set up Azure Clarity project & get tracking code.
-44. Integrate tracking code into the React application.
-45. Verify data flow in the Clarity dashboard.
+**Phase 9: Frontend - Moderator**
+49. Implement role checking logic (e.g., useAuth hook accessing authStore) for conditional rendering. Update ProtectedRoute to handle role checks.
+50. Implement moderatorService functions (fetchAllTodos, disableTodo, enableTodo).
+51. Create ModeratorViewPage (/moderator/view-all) with role-protected route (Moderator or Super Admin).
+52. Implement AllTodosList component: Fetch/display all todos using moderatorService, show owner info.
+53. Implement Disable/Enable buttons within AllTodosList (conditionally rendered): On click -> call moderatorService -> update relevant state (e.g., todoStore or a dedicated moderatorStore) visually.
 
-**Phase 10: Documentation Site**
-46. Initialize Astro project in `docs` folder & add Starlight.
-47. Configure Starlight (sidebar, title).
-48. Write documentation content (.md/.mdx files).
-49. **Create `Dockerfile` for Docs site** (Build static files, use Nginx or `serve` to host them).
-50. Test docs site build/dev server locally.
+**Phase 10: Frontend - Admin**
+54. Implement adminService functions (fetchAllUsers, promoteUser).
+55. Create UserManagementPage (/admin/users) with role-protected route (Super Admin only).
+56. Implement UserList component: Fetch/display all users using adminService, show roles.
+57. Implement "Promote to Moderator" button within UserList (conditionally rendered): On click -> call adminService.promoteUser -> update user list state visually.
 
-**Phase 11: Finalization & Dockerization**
-51. Optimize backend `Dockerfile` (multi-stage builds).
-52. Create optimized frontend `Dockerfile` (multi-stage build with Nginx or serve).
-53. **Update `docker-compose.yml` to include the `docs` service**, using its Dockerfile and mapping appropriate ports (e.g., map host port 8081 to the container's serving port).
-54. Finalize `docker-compose.yml` (env vars via `.env`, service dependencies `depends_on` if needed).
-55. Perform comprehensive End-to-End testing of all three services via `docker-compose up`.
-56. Code review, cleanup, add comments.
-57. Final `README.md` updates (verify ports, instructions).
+**Phase 11: Azure Clarity Integration**
+58. Set up Azure Clarity project & get tracking code.
+59. Integrate tracking code into the React application.
+60. Verify data flow in the Clarity dashboard.
+
+**Phase 12: Documentation Site**
+59. Initialize Astro project in `docs` folder & add Starlight.
+60. Configure Starlight (sidebar, title).
+61. Write documentation content (.md/.mdx files).
+62. **Create `Dockerfile` for Docs site** (Build static files, use Nginx or `serve` to host them).
+63. Test docs site build/dev server locally.
+
+**Phase 13: Finalization & Dockerization**
+61. Optimize backend `Dockerfile` (multi-stage builds).
+62. Create optimized frontend `Dockerfile` (multi-stage build with Nginx or serve).
+63. **Update `docker-compose.yml` to include the `docs` service**, using its Dockerfile and mapping appropriate ports (e.g., map host port 8081 to the container's serving port).
+64. Finalize `docker-compose.yml` (env vars via `.env`, service dependencies `depends_on` if needed).
+65. Perform comprehensive End-to-End testing of all three services via `docker-compose up`.
+66. Code review, cleanup, add comments.
+67. Final `README.md` updates (verify ports, instructions).
