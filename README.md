@@ -76,8 +76,57 @@ The application follows a decoupled architecture orchestrated by Docker Compose:
 
 ### Database Migrations (Flyway - Backend)
 
-* The backend project uses Flyway. SQL migration scripts are in `src/main/resources/db/migration`.
-* Flyway automatically applies pending migrations when the backend container starts.
+* The backend project uses Flyway for database schema migrations. SQL migration scripts are located in `src/main/resources/db/migration`.
+* Migration scripts follow a versioned naming convention: `V{version}__{description}.sql` (e.g., `V1__init_user_tables.sql`).
+
+#### Development Environment Migration Approach
+
+* In development, Flyway migrations are configured to run automatically when the application starts.
+* This automatic approach simplifies the development workflow and ensures database schema is always in sync with the application code.
+* Alternatively, you can manually execute migrations using the Maven Flyway plugin:
+  ```bash
+  # Navigate to the backend directory
+  cd backend
+  
+  # 執行 Flyway 遷移（環境無關）
+  ./mvnw flyway:migrate
+  
+  # 明確指定在開發環境執行遷移（推薦方式）
+  ./mvnw flyway:migrate -Dspring.profiles.active=dev
+  
+  # 明確指定在生產環境執行遷移
+  ./mvnw flyway:migrate -Dspring.profiles.active=prod
+  ```
+
+#### Enterprise-grade Migration Practices
+
+For production and enterprise environments, we recommend a more controlled migration approach:
+
+1. **Migration Environments**:
+   * **Development**: Automatic migrations on application startup (current implementation)
+   * **Testing/Staging**: CI/CD pipeline-controlled migrations, separate from application deployment
+   * **Production**: Manual or controlled migrations with proper approvals
+
+2. **Production Migration Process**:
+   * Migrations should be executed as a separate step before application deployment
+   * Use dedicated migration commands rather than relying on application startup:
+     ```bash
+     # Using Maven with properties from application.yml/application-prod.yml
+     mvn flyway:migrate -Dspring.profiles.active=prod
+     
+     # Using Flyway CLI directly
+     flyway -url=jdbc:postgresql://db-host:5432/clarity_db -user=postgres -password=securepassword migrate
+     ```
+
+3. **Enterprise Best Practices**:
+   * Database changes should be reviewed by DBAs or senior developers
+   * Always create database backups before running migrations
+   * Consider blue-green deployment strategies for zero-downtime migrations
+   * Maintain separate migration scripts for data and schema changes
+   * Test migrations thoroughly in staging environments that mirror production
+   * For high-regulation industries (finance, healthcare), implement additional approval workflows
+
+These practices ensure database changes are applied in a controlled, predictable manner with proper oversight, especially important for business-critical applications.
 
 ### Azure Clarity Integration (Frontend)
 
@@ -150,7 +199,7 @@ The entire project stack (Frontend, Backend, Docs, Database) is designed to run 
    * This command will:
      * Build the images for the frontend, backend, docs, and database (if not already built).
      * Start all services in detached mode.
-     * Run Flyway migrations automatically when the backend starts.
+     * Run Flyway migrations automatically when the backend starts (for development purposes only; see Enterprise-grade Migration Practices section for production recommendations).
      
 4. **Accessing the Services:**
    * **Frontend:** `http://localhost:3000` (or the port configured in `docker-compose.yml`)

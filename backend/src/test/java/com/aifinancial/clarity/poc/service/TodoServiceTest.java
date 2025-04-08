@@ -1,8 +1,34 @@
 package com.aifinancial.clarity.poc.service;
 
+import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
-import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
 import com.aifinancial.clarity.poc.exception.UnauthorizedException;
 import com.aifinancial.clarity.poc.model.Folder;
 import com.aifinancial.clarity.poc.model.Role;
@@ -13,32 +39,6 @@ import com.aifinancial.clarity.poc.repository.TodoRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
 import com.aifinancial.clarity.poc.service.impl.TodoServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Collection;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.mockito.quality.Strictness.LENIENT;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -61,6 +61,9 @@ public class TodoServiceTest {
 
     @InjectMocks
     private TodoServiceImpl todoService;
+
+    @Mock
+    private ModeratorService moderatorService;
 
     private User normalUser;
     private User moderatorUser;
@@ -223,9 +226,17 @@ public class TodoServiceTest {
         
         when(userRepository.findById(moderatorUser.getId())).thenReturn(Optional.of(moderatorUser));
         when(todoRepository.findAll()).thenReturn(Arrays.asList(todo1, todo2, todo3));
+        
+        // 使用 moderatorService 來獲取所有待辦事項
+        List<TodoResponse> expectedResponse = Arrays.asList(
+            createTodoResponse(todo1),
+            createTodoResponse(todo2),
+            createTodoResponse(todo3)
+        );
+        when(moderatorService.getAllTodos()).thenReturn(expectedResponse);
 
-        // 执行测试
-        List<TodoResponse> result = todoService.getAllTodos();
+        // 執行測試
+        List<TodoResponse> result = moderatorService.getAllTodos();
 
         // 验证结果
         assertNotNull(result);
@@ -242,7 +253,7 @@ public class TodoServiceTest {
         doReturn(normalAuthorities).when(authentication).getAuthorities();
 
         // 验证普通用户无法获取所有待办事项
-        assertThrows(UnauthorizedException.class, () -> todoService.getAllTodos());
+        assertThrows(UnauthorizedException.class, () -> moderatorService.getAllTodos());
     }
 
     @Test
@@ -415,5 +426,22 @@ public class TodoServiceTest {
 
         // 验证普通用户无法删除不属于自己的待办事项
         assertThrows(UnauthorizedException.class, () -> todoService.deleteTodo(todo3.getId()));
+    }
+
+    // 輔助方法創建 TodoResponse
+    private TodoResponse createTodoResponse(Todo todo) {
+        return TodoResponse.builder()
+            .id(todo.getId())
+            .title(todo.getTitle())
+            .description(todo.getDescription())
+            .completed(todo.isCompleted())
+            .disabled(todo.isDisabled())
+            .ownerId(todo.getOwner().getId())
+            .ownerUsername(todo.getOwner().getUsername())
+            .folderId(todo.getFolder() != null ? todo.getFolder().getId() : null)
+            .folderName(todo.getFolder() != null ? todo.getFolder().getName() : null)
+            .createdAt(todo.getCreatedAt())
+            .updatedAt(todo.getUpdatedAt())
+            .build();
     }
 } 

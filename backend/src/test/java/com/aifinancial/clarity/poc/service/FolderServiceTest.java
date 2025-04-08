@@ -1,8 +1,34 @@
 package com.aifinancial.clarity.poc.service;
 
+import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
-import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
 import com.aifinancial.clarity.poc.exception.UnauthorizedException;
 import com.aifinancial.clarity.poc.model.Folder;
 import com.aifinancial.clarity.poc.model.Role;
@@ -11,32 +37,6 @@ import com.aifinancial.clarity.poc.repository.FolderRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
 import com.aifinancial.clarity.poc.service.impl.FolderServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Collections;
-import java.util.Collection;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.mockito.quality.Strictness.LENIENT;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -56,6 +56,9 @@ public class FolderServiceTest {
 
     @InjectMocks
     private FolderServiceImpl folderService;
+
+    @Mock
+    private ModeratorService moderatorService;
 
     private User normalUser;
     private User adminUser;
@@ -157,9 +160,16 @@ public class FolderServiceTest {
         
         when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
         when(folderRepository.findAll()).thenReturn(Arrays.asList(folder1, folder2));
+        
+        // 使用 moderatorService 獲取所有文件夾
+        List<FolderResponse> expectedResponse = Arrays.asList(
+            createFolderResponse(folder1),
+            createFolderResponse(folder2)
+        );
+        when(moderatorService.getAllFolders()).thenReturn(expectedResponse);
 
         // 执行测试
-        List<FolderResponse> result = folderService.getAllFolders();
+        List<FolderResponse> result = moderatorService.getAllFolders();
 
         // 验证结果
         assertNotNull(result);
@@ -176,7 +186,7 @@ public class FolderServiceTest {
         doReturn(normalAuthorities).when(authentication).getAuthorities();
 
         // 验证正常用户无法获取所有文件夹
-        assertThrows(UnauthorizedException.class, () -> folderService.getAllFolders());
+        assertThrows(UnauthorizedException.class, () -> moderatorService.getAllFolders());
     }
 
     @Test
@@ -273,5 +283,18 @@ public class FolderServiceTest {
 
         // 验证没有权限的用户不能删除其他用户的文件夹
         assertThrows(UnauthorizedException.class, () -> folderService.deleteFolder(folder2.getId()));
+    }
+
+    // 輔助方法創建 FolderResponse
+    private FolderResponse createFolderResponse(Folder folder) {
+        return FolderResponse.builder()
+            .id(folder.getId())
+            .name(folder.getName())
+            .description(folder.getDescription())
+            .ownerId(folder.getOwner().getId())
+            .ownerUsername(folder.getOwner().getUsername())
+            .createdAt(folder.getCreatedAt())
+            .updatedAt(folder.getUpdatedAt())
+            .build();
     }
 } 
