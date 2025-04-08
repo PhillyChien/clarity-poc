@@ -1,30 +1,38 @@
 package com.aifinancial.clarity.poc.controller;
 
-import com.aifinancial.clarity.poc.dto.request.TodoRequest;
-import com.aifinancial.clarity.poc.dto.response.TodoResponse;
-import com.aifinancial.clarity.poc.service.TodoService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
 import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import com.aifinancial.clarity.poc.dto.request.TodoRequest;
+import com.aifinancial.clarity.poc.dto.response.TodoResponse;
+import com.aifinancial.clarity.poc.service.TodoService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -110,17 +118,6 @@ public class TodoControllerTest {
     }
 
     @Test
-    void testGetAllTodos() throws Exception {
-        when(todoService.getAllTodos()).thenReturn(todoResponses);
-
-        mockMvc.perform(get("/todos/all"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)));
-
-        verify(todoService, times(1)).getAllTodos();
-    }
-
-    @Test
     void testGetTodosByFolder() throws Exception {
         when(todoService.getTodosByFolder(1L)).thenReturn(todoResponses);
 
@@ -201,7 +198,7 @@ public class TodoControllerTest {
                 .id(1L)
                 .title("Test Todo 1")
                 .description("Test Description 1")
-                .completed(true) // 切换为完成状态
+                .completed(true)  // 已切换为完成状态
                 .disabled(false)
                 .ownerId(1L)
                 .ownerUsername("user1")
@@ -223,8 +220,6 @@ public class TodoControllerTest {
 
     @Test
     void testDeleteTodo() throws Exception {
-        doNothing().when(todoService).deleteTodo(1L);
-
         mockMvc.perform(delete("/todos/1"))
                 .andExpect(status().isNoContent());
 

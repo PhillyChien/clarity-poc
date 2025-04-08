@@ -1,13 +1,11 @@
 package com.aifinancial.clarity.poc.service;
 
+import java.util.List;
+
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 
-import java.util.List;
-
 public interface FolderService {
-    
-    List<FolderResponse> getAllFolders();
     
     List<FolderResponse> getCurrentUserFolders();
     

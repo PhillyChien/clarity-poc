@@ -1,8 +1,22 @@
 package com.aifinancial.clarity.poc.controller;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.service.FolderService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,11 +25,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/folders")
@@ -40,20 +49,6 @@ public class FolderController {
     })
     public ResponseEntity<List<FolderResponse>> getCurrentUserFolders() {
         return ResponseEntity.ok(folderService.getCurrentUserFolders());
-    }
-
-    @GetMapping("/all")
-    @PreAuthorize("hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Get all folders", 
-               description = "Retrieves all folders in the system. Only accessible by MODERATOR and SUPER_ADMIN roles")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Folders retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = FolderResponse.class))),
-        @ApiResponse(responseCode = "401", description = "Unauthorized - Login required"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions")
-    })
-    public ResponseEntity<List<FolderResponse>> getAllFolders() {
-        return ResponseEntity.ok(folderService.getAllFolders());
     }
 
     @GetMapping("/{id}")

@@ -1,5 +1,13 @@
 package com.aifinancial.clarity.poc.service.impl;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
@@ -11,13 +19,6 @@ import com.aifinancial.clarity.poc.repository.FolderRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
 import com.aifinancial.clarity.poc.service.FolderService;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class FolderServiceImpl implements FolderService {
@@ -42,19 +43,6 @@ public class FolderServiceImpl implements FolderService {
         return authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_MODERATOR") || 
                         a.getAuthority().equals("ROLE_SUPER_ADMIN"));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<FolderResponse> getAllFolders() {
-        // Only moderators and admins can see all folders
-        if (!isCurrentUserModeratorOrAdmin()) {
-            throw new UnauthorizedException("Not authorized to view all folders");
-        }
-
-        return folderRepository.findAll().stream()
-                .map(this::mapToFolderResponse)
-                .collect(Collectors.toList());
     }
 
     @Override

@@ -1,13 +1,11 @@
 package com.aifinancial.clarity.poc.service;
 
+import java.util.List;
+
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 
-import java.util.List;
-
 public interface TodoService {
-    
-    List<TodoResponse> getAllTodos();
     
     List<TodoResponse> getCurrentUserTodos();
     

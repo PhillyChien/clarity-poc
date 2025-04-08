@@ -1,5 +1,13 @@
 package com.aifinancial.clarity.poc.service.impl;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
@@ -13,13 +21,6 @@ import com.aifinancial.clarity.poc.repository.TodoRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
 import com.aifinancial.clarity.poc.service.TodoService;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class TodoServiceImpl implements TodoService {
@@ -46,19 +47,6 @@ public class TodoServiceImpl implements TodoService {
         return authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_MODERATOR") || 
                         a.getAuthority().equals("ROLE_SUPER_ADMIN"));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<TodoResponse> getAllTodos() {
-        // Only moderators and admins can see all todos
-        if (!isCurrentUserModeratorOrAdmin()) {
-            throw new UnauthorizedException("Not authorized to view all todos");
-        }
-
-        return todoRepository.findAll().stream()
-                .map(this::mapToTodoResponse)
-                .collect(Collectors.toList());
     }
 
     @Override
