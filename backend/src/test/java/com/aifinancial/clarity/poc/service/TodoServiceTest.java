@@ -2,6 +2,7 @@ package com.aifinancial.clarity.poc.service;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import static org.mockito.quality.Strictness.LENIENT;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -61,9 +62,6 @@ public class TodoServiceTest {
 
     @InjectMocks
     private TodoServiceImpl todoService;
-
-    @Mock
-    private ModeratorService moderatorService;
 
     private User normalUser;
     private User moderatorUser;
@@ -213,47 +211,6 @@ public class TodoServiceTest {
         assertEquals(todo1.isCompleted(), result.get(0).isCompleted());
         assertEquals(normalUser.getId(), result.get(0).getOwnerId());
         assertEquals(normalUser.getUsername(), result.get(0).getOwnerUsername());
-    }
-
-    @Test
-    void testGetAllTodosAsModerator() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(moderatorUserDetails);
-        
-        // 使用doReturn().when()模式代替when().thenReturn()
-        doReturn(moderatorAuthorities).when(authentication).getAuthorities();
-        
-        when(userRepository.findById(moderatorUser.getId())).thenReturn(Optional.of(moderatorUser));
-        when(todoRepository.findAll()).thenReturn(Arrays.asList(todo1, todo2, todo3));
-        
-        // 使用 moderatorService 來獲取所有待辦事項
-        List<TodoResponse> expectedResponse = Arrays.asList(
-            createTodoResponse(todo1),
-            createTodoResponse(todo2),
-            createTodoResponse(todo3)
-        );
-        when(moderatorService.getAllTodos()).thenReturn(expectedResponse);
-
-        // 執行測試
-        List<TodoResponse> result = moderatorService.getAllTodos();
-
-        // 验证结果
-        assertNotNull(result);
-        assertEquals(3, result.size());
-    }
-
-    @Test
-    void testGetAllTodosAsNormalUser() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        
-        // 使用doReturn().when()模式代替when().thenReturn()
-        doReturn(normalAuthorities).when(authentication).getAuthorities();
-
-        // 验证普通用户无法获取所有待办事项
-        assertThrows(UnauthorizedException.class, () -> moderatorService.getAllTodos());
     }
 
     @Test
@@ -417,31 +374,11 @@ public class TodoServiceTest {
         // 模拟安全上下文和存储库
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        
-        // 使用doReturn().when()模式代替when().thenReturn()
-        doReturn(normalAuthorities).when(authentication).getAuthorities();
-        
+        when(authentication.getAuthorities()).thenReturn((Collection) normalAuthorities);
         when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
         when(todoRepository.findById(todo3.getId())).thenReturn(Optional.of(todo3));
 
         // 验证普通用户无法删除不属于自己的待办事项
         assertThrows(UnauthorizedException.class, () -> todoService.deleteTodo(todo3.getId()));
-    }
-
-    // 輔助方法創建 TodoResponse
-    private TodoResponse createTodoResponse(Todo todo) {
-        return TodoResponse.builder()
-            .id(todo.getId())
-            .title(todo.getTitle())
-            .description(todo.getDescription())
-            .completed(todo.isCompleted())
-            .disabled(todo.isDisabled())
-            .ownerId(todo.getOwner().getId())
-            .ownerUsername(todo.getOwner().getUsername())
-            .folderId(todo.getFolder() != null ? todo.getFolder().getId() : null)
-            .folderName(todo.getFolder() != null ? todo.getFolder().getName() : null)
-            .createdAt(todo.getCreatedAt())
-            .updatedAt(todo.getUpdatedAt())
-            .build();
     }
 } 

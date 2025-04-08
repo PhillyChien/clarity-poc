@@ -1,32 +1,35 @@
 package com.aifinancial.clarity.poc.controller;
 
-import com.aifinancial.clarity.poc.dto.response.FolderResponse;
-import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.dto.response.TodoResponse;
-import com.aifinancial.clarity.poc.service.ModeratorService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import com.aifinancial.clarity.poc.dto.response.FolderResponse;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.dto.response.TodoResponse;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
+import com.aifinancial.clarity.poc.service.ModeratorService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -133,10 +136,10 @@ public class ModeratorControllerTest {
     }
 
     @Test
-    void testGetAllFolders() throws Exception {
-        when(moderatorService.getAllFolders()).thenReturn(folderResponses);
+    void testGetFoldersByUserId() throws Exception {
+        when(moderatorService.getFoldersByUserId(1L)).thenReturn(folderResponses);
 
-        mockMvc.perform(get("/moderator/folders"))
+        mockMvc.perform(get("/moderator/users/1/folders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].id", is(1)))
@@ -146,14 +149,14 @@ public class ModeratorControllerTest {
                 .andExpect(jsonPath("$[1].name", is("Test Folder 2")))
                 .andExpect(jsonPath("$[1].ownerId", is(2)));
 
-        verify(moderatorService, times(1)).getAllFolders();
+        verify(moderatorService, times(1)).getFoldersByUserId(1L);
     }
 
     @Test
-    void testGetAllTodos() throws Exception {
-        when(moderatorService.getAllTodos()).thenReturn(todoResponses);
+    void testGetTodosByUserId() throws Exception {
+        when(moderatorService.getTodosByUserId(1L)).thenReturn(todoResponses);
 
-        mockMvc.perform(get("/moderator/todos"))
+        mockMvc.perform(get("/moderator/users/1/todos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))
                 .andExpect(jsonPath("$[0].id", is(1)))
@@ -165,7 +168,7 @@ public class ModeratorControllerTest {
                 .andExpect(jsonPath("$[2].title", is("Test Todo 3")))
                 .andExpect(jsonPath("$[2].disabled", is(true)));
 
-        verify(moderatorService, times(1)).getAllTodos();
+        verify(moderatorService, times(1)).getTodosByUserId(1L);
     }
 
     @Test
@@ -192,11 +195,10 @@ public class ModeratorControllerTest {
 
     @Test
     void testToggleTodoStatusNotFound() throws Exception {
-        when(moderatorService.toggleTodoDisabledStatus(999L)).thenReturn(new MessageResponse("Failed to toggle todo status: Todo not found with ID: 999"));
+        when(moderatorService.toggleTodoDisabledStatus(999L)).thenThrow(new ResourceNotFoundException("Todo not found with id: 999"));
 
         mockMvc.perform(put("/moderator/todos/999/toggle-status"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("Failed to toggle todo status: Todo not found with ID: 999")));
+                .andExpect(status().isNotFound());
 
         verify(moderatorService, times(1)).toggleTodoDisabledStatus(999L);
     }

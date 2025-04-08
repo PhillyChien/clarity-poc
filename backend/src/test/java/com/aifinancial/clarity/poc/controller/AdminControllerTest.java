@@ -1,35 +1,40 @@
 package com.aifinancial.clarity.poc.controller;
 
-import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
-import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.dto.response.UserResponse;
-import com.aifinancial.clarity.poc.exception.GlobalExceptionHandler;
-import com.aifinancial.clarity.poc.service.AdminService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.dto.response.UserResponse;
+import com.aifinancial.clarity.poc.exception.BadRequestException;
+import com.aifinancial.clarity.poc.exception.GlobalExceptionHandler;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
+import com.aifinancial.clarity.poc.service.AdminService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -141,14 +146,50 @@ public class AdminControllerTest {
         superAdminRequest.setUserId(1L);
         superAdminRequest.setRole("SUPER_ADMIN");
         
-        // 模擬服務返回拒絕消息而不是拋出異常
-        when(adminService.updateUserRole(any(RoleUpdateRequest.class))).thenReturn(accessDeniedResponse);
+        // 模擬服務拋出 AccessDeniedException
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class)))
+            .thenThrow(new AccessDeniedException("Cannot promote users to SUPER_ADMIN role"));
 
         mockMvc.perform(post("/admin/users/role")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(superAdminRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("Access denied: Cannot promote users to SUPER_ADMIN role")));
+                .andExpect(status().isForbidden());
+
+        verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+    }
+    
+    @Test
+    void testUpdateUserRoleWithUserNotFound() throws Exception {
+        // 模擬服務拋出 ResourceNotFoundException
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class)))
+            .thenThrow(new ResourceNotFoundException("User not found with ID: 999"));
+
+        RoleUpdateRequest nonExistentUserRequest = new RoleUpdateRequest();
+        nonExistentUserRequest.setUserId(999L);
+        nonExistentUserRequest.setRole("MODERATOR");
+
+        mockMvc.perform(post("/admin/users/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(nonExistentUserRequest)))
+                .andExpect(status().isNotFound());
+
+        verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+    }
+    
+    @Test
+    void testUpdateUserRoleWithInvalidRole() throws Exception {
+        // 模擬服務拋出 BadRequestException
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class)))
+            .thenThrow(new BadRequestException("Invalid role: INVALID_ROLE"));
+
+        RoleUpdateRequest invalidRoleRequest = new RoleUpdateRequest();
+        invalidRoleRequest.setUserId(1L);
+        invalidRoleRequest.setRole("INVALID_ROLE");
+
+        mockMvc.perform(post("/admin/users/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRoleRequest)))
+                .andExpect(status().isBadRequest());
 
         verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
     }

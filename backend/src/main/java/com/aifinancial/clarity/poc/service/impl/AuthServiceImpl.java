@@ -1,15 +1,5 @@
 package com.aifinancial.clarity.poc.service.impl;
 
-import com.aifinancial.clarity.poc.dto.request.LoginRequest;
-import com.aifinancial.clarity.poc.dto.request.RegisterRequest;
-import com.aifinancial.clarity.poc.dto.response.JwtResponse;
-import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.model.Role;
-import com.aifinancial.clarity.poc.model.User;
-import com.aifinancial.clarity.poc.repository.UserRepository;
-import com.aifinancial.clarity.poc.security.JwtTokenProvider;
-import com.aifinancial.clarity.poc.security.UserDetailsImpl;
-import com.aifinancial.clarity.poc.service.AuthService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -17,6 +7,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.aifinancial.clarity.poc.dto.request.LoginRequest;
+import com.aifinancial.clarity.poc.dto.request.RegisterRequest;
+import com.aifinancial.clarity.poc.dto.response.JwtResponse;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.exception.BadRequestException;
+import com.aifinancial.clarity.poc.model.Role;
+import com.aifinancial.clarity.poc.model.User;
+import com.aifinancial.clarity.poc.repository.UserRepository;
+import com.aifinancial.clarity.poc.security.JwtTokenProvider;
+import com.aifinancial.clarity.poc.security.UserDetailsImpl;
+import com.aifinancial.clarity.poc.service.AuthService;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -64,11 +66,11 @@ public class AuthServiceImpl implements AuthService {
     public MessageResponse registerUser(RegisterRequest registerRequest) {
         try {
             if (userRepository.existsByUsername(registerRequest.getUsername())) {
-                return new MessageResponse("Error: Username is already taken!");
+                throw new BadRequestException("Username is already taken");
             }
 
             if (userRepository.existsByEmail(registerRequest.getEmail())) {
-                return new MessageResponse("Error: Email is already in use!");
+                throw new BadRequestException("Email is already in use");
             }
 
             // 創建新用戶
@@ -81,8 +83,11 @@ public class AuthServiceImpl implements AuthService {
             userRepository.save(user);
 
             return new MessageResponse("User registered successfully!");
+        } catch (BadRequestException e) {
+            // 重新抛出BadRequestException
+            throw e;
         } catch (Exception e) {
-            return new MessageResponse("Registration failed: " + e.getMessage());
+            throw new BadRequestException("Registration failed: " + e.getMessage());
         }
     }
 } 

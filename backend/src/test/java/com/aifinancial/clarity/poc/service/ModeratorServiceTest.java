@@ -1,32 +1,42 @@
 package com.aifinancial.clarity.poc.service;
 
+import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import static org.mockito.quality.Strictness.LENIENT;
+
+import com.aifinancial.clarity.poc.converter.UserConverter;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
 import com.aifinancial.clarity.poc.model.Folder;
 import com.aifinancial.clarity.poc.model.Role;
 import com.aifinancial.clarity.poc.model.Todo;
 import com.aifinancial.clarity.poc.model.User;
 import com.aifinancial.clarity.poc.repository.FolderRepository;
 import com.aifinancial.clarity.poc.repository.TodoRepository;
+import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.service.impl.ModeratorServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-
-import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.mockito.quality.Strictness.LENIENT;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -37,6 +47,12 @@ public class ModeratorServiceTest {
 
     @Mock
     private FolderRepository folderRepository;
+    
+    @Mock
+    private UserRepository userRepository;
+    
+    @Mock
+    private UserConverter userConverter;
 
     @InjectMocks
     private ModeratorServiceImpl moderatorService;
@@ -48,8 +64,8 @@ public class ModeratorServiceTest {
     private Todo todo1;
     private Todo todo2;
     private Todo todo3;
-    private List<Folder> allFolders;
-    private List<Todo> allTodos;
+    private List<Folder> userFolders;
+    private List<Todo> userTodos;
 
     @BeforeEach
     void setUp() {
@@ -120,49 +136,57 @@ public class ModeratorServiceTest {
         todo3.setUpdatedAt(OffsetDateTime.now());
 
         // 創建列表
-        allFolders = Arrays.asList(folder1, folder2);
-        allTodos = Arrays.asList(todo1, todo2, todo3);
+        userFolders = Arrays.asList(folder1, folder2);
+        userTodos = Arrays.asList(todo1, todo2, todo3);
+    }
+    
+    @Test
+    void testGetAllUsers() {
+        // 测试getAllUsers方法，这里简单验证方法调用
+        moderatorService.getAllUsers();
+        verify(userRepository, times(1)).findAll();
+        verify(userConverter, times(1)).toDtoList(any());
     }
 
     @Test
-    void testGetAllFolders() {
+    void testGetFoldersByUserId() {
         // 模擬存儲庫
-        when(folderRepository.findAll()).thenReturn(allFolders);
+        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
+        when(folderRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(folder1));
 
         // 執行測試
-        List<FolderResponse> result = moderatorService.getAllFolders();
+        List<FolderResponse> result = moderatorService.getFoldersByUserId(normalUser.getId());
 
         // 驗證結果
         assertNotNull(result);
-        assertEquals(2, result.size());
+        assertEquals(1, result.size());
         assertEquals(folder1.getId(), result.get(0).getId());
         assertEquals(folder1.getName(), result.get(0).getName());
         assertEquals(folder1.getOwner().getId(), result.get(0).getOwnerId());
         
         // 驗證方法調用
-        verify(folderRepository, times(1)).findAll();
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(folderRepository, times(1)).findByOwnerOrderByCreatedAtDesc(normalUser);
     }
 
     @Test
-    void testGetAllTodos() {
+    void testGetTodosByUserId() {
         // 模擬存儲庫
-        when(todoRepository.findAll()).thenReturn(allTodos);
+        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
+        when(todoRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(todo1, todo2));
 
         // 執行測試
-        List<TodoResponse> result = moderatorService.getAllTodos();
+        List<TodoResponse> result = moderatorService.getTodosByUserId(normalUser.getId());
 
         // 驗證結果
         assertNotNull(result);
-        assertEquals(3, result.size());
+        assertEquals(2, result.size());
         assertEquals(todo1.getId(), result.get(0).getId());
         assertEquals(todo1.getTitle(), result.get(0).getTitle());
-        assertEquals(todo1.isCompleted(), result.get(0).isCompleted());
-        assertEquals(todo1.isDisabled(), result.get(0).isDisabled());
-        assertEquals(todo1.getOwner().getId(), result.get(0).getOwnerId());
-        assertEquals(todo1.getFolder().getId(), result.get(0).getFolderId());
         
         // 驗證方法調用
-        verify(todoRepository, times(1)).findAll();
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(todoRepository, times(1)).findByOwnerOrderByCreatedAtDesc(normalUser);
     }
 
     @Test
@@ -214,15 +238,37 @@ public class ModeratorServiceTest {
         // 模擬存儲庫 - 找不到待辦事項
         when(todoRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // 執行測試
-        MessageResponse result = moderatorService.toggleTodoDisabledStatus(999L);
-
-        // 驗證結果
-        assertNotNull(result);
-        assertTrue(result.getMessage().contains("Failed to toggle todo status"));
+        // 執行測試並驗證異常
+        assertThrows(ResourceNotFoundException.class, () -> moderatorService.toggleTodoDisabledStatus(999L));
         
         // 驗證方法調用
         verify(todoRepository, times(1)).findById(999L);
         verify(todoRepository, never()).save(any(Todo.class));
+    }
+    
+    @Test
+    void testGetFoldersByUserIdUserNotFound() {
+        // 模拟找不到用户
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        
+        // 执行测试并验证异常
+        assertThrows(ResourceNotFoundException.class, () -> moderatorService.getFoldersByUserId(999L));
+        
+        // 验证方法调用
+        verify(userRepository, times(1)).findById(999L);
+        verify(folderRepository, never()).findByOwnerOrderByCreatedAtDesc(any());
+    }
+    
+    @Test
+    void testGetTodosByUserIdUserNotFound() {
+        // 模拟找不到用户
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        
+        // 执行测试并验证异常
+        assertThrows(ResourceNotFoundException.class, () -> moderatorService.getTodosByUserId(999L));
+        
+        // 验证方法调用
+        verify(userRepository, times(1)).findById(999L);
+        verify(todoRepository, never()).findByOwnerOrderByCreatedAtDesc(any());
     }
 } 

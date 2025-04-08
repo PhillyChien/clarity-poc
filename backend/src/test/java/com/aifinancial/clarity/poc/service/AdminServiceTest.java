@@ -1,30 +1,39 @@
 package com.aifinancial.clarity.poc.service;
 
-import com.aifinancial.clarity.poc.converter.UserConverter;
-import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
-import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.dto.response.UserResponse;
-import com.aifinancial.clarity.poc.model.Role;
-import com.aifinancial.clarity.poc.model.User;
-import com.aifinancial.clarity.poc.repository.UserRepository;
-import com.aifinancial.clarity.poc.service.impl.AdminServiceImpl;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.springframework.security.access.AccessDeniedException;
-
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
 import static org.mockito.quality.Strictness.LENIENT;
+import org.springframework.security.access.AccessDeniedException;
+
+import com.aifinancial.clarity.poc.converter.UserConverter;
+import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.dto.response.UserResponse;
+import com.aifinancial.clarity.poc.exception.BadRequestException;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
+import com.aifinancial.clarity.poc.model.Role;
+import com.aifinancial.clarity.poc.model.User;
+import com.aifinancial.clarity.poc.repository.UserRepository;
+import com.aifinancial.clarity.poc.service.impl.AdminServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -207,15 +216,8 @@ public class AdminServiceTest {
         // 模擬存儲庫
         when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
 
-        // 執行測試
-        MessageResponse result = adminService.updateUserRole(request);
-
-        // 驗證結果
-        assertNotNull(result);
-        assertTrue(result.getMessage().contains("Invalid role"));
-        
-        // 驗證角色未改變
-        assertEquals(Role.NORMAL, normalUser.getRole());
+        // 執行測試並驗證異常
+        assertThrows(BadRequestException.class, () -> adminService.updateUserRole(request));
         
         // 驗證方法調用
         verify(userRepository, times(1)).findById(normalUser.getId());
@@ -232,12 +234,8 @@ public class AdminServiceTest {
         // 模擬存儲庫
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // 執行測試
-        MessageResponse result = adminService.updateUserRole(request);
-
-        // 驗證結果
-        assertNotNull(result);
-        assertTrue(result.getMessage().contains("Failed to update user role"));
+        // 執行測試並驗證異常
+        assertThrows(ResourceNotFoundException.class, () -> adminService.updateUserRole(request));
         
         // 驗證方法調用
         verify(userRepository, times(1)).findById(999L);

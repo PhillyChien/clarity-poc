@@ -1,9 +1,22 @@
 package com.aifinancial.clarity.poc.controller;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
+import com.aifinancial.clarity.poc.dto.response.ErrorResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.UserResponse;
 import com.aifinancial.clarity.poc.service.AdminService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -13,11 +26,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/admin")
@@ -38,7 +46,8 @@ public class AdminController {
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "List of users retrieved successfully", 
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserResponse.class)))),
-        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have admin rights")
+        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have admin rights",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(adminService.getAllUsers());
@@ -50,8 +59,12 @@ public class AdminController {
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "User role updated successfully", 
                     content = @Content(schema = @Schema(implementation = MessageResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request - User not found or invalid role"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have admin rights")
+        @ApiResponse(responseCode = "400", description = "Invalid request - Invalid role", 
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have admin rights or attempted to promote to SUPER_ADMIN", 
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "User not found", 
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<MessageResponse> updateUserRole(
             @Parameter(description = "Role update details", required = true)

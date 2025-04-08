@@ -15,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,9 +55,6 @@ public class FolderServiceTest {
 
     @InjectMocks
     private FolderServiceImpl folderService;
-
-    @Mock
-    private ModeratorService moderatorService;
 
     private User normalUser;
     private User adminUser;
@@ -150,46 +146,6 @@ public class FolderServiceTest {
     }
 
     @Test
-    void testGetAllFoldersAsAdmin() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(adminUserDetails);
-        
-        // 使用doReturn().when()模式代替when().thenReturn()
-        doReturn(adminAuthorities).when(authentication).getAuthorities();
-        
-        when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
-        when(folderRepository.findAll()).thenReturn(Arrays.asList(folder1, folder2));
-        
-        // 使用 moderatorService 獲取所有文件夾
-        List<FolderResponse> expectedResponse = Arrays.asList(
-            createFolderResponse(folder1),
-            createFolderResponse(folder2)
-        );
-        when(moderatorService.getAllFolders()).thenReturn(expectedResponse);
-
-        // 执行测试
-        List<FolderResponse> result = moderatorService.getAllFolders();
-
-        // 验证结果
-        assertNotNull(result);
-        assertEquals(2, result.size());
-    }
-
-    @Test
-    void testGetAllFoldersAsNormalUser() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        
-        // 使用doReturn().when()模式代替when().thenReturn()
-        doReturn(normalAuthorities).when(authentication).getAuthorities();
-
-        // 验证正常用户无法获取所有文件夹
-        assertThrows(UnauthorizedException.class, () -> moderatorService.getAllFolders());
-    }
-
-    @Test
     void testCreateFolder() {
         // 准备测试数据
         FolderRequest request = new FolderRequest();
@@ -274,27 +230,10 @@ public class FolderServiceTest {
         // 模拟安全上下文
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        
-        // 使用doReturn().when()模式代替when().thenReturn()
-        doReturn(normalAuthorities).when(authentication).getAuthorities();
-        
         when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
         when(folderRepository.findById(folder2.getId())).thenReturn(Optional.of(folder2));
 
         // 验证没有权限的用户不能删除其他用户的文件夹
         assertThrows(UnauthorizedException.class, () -> folderService.deleteFolder(folder2.getId()));
-    }
-
-    // 輔助方法創建 FolderResponse
-    private FolderResponse createFolderResponse(Folder folder) {
-        return FolderResponse.builder()
-            .id(folder.getId())
-            .name(folder.getName())
-            .description(folder.getDescription())
-            .ownerId(folder.getOwner().getId())
-            .ownerUsername(folder.getOwner().getUsername())
-            .createdAt(folder.getCreatedAt())
-            .updatedAt(folder.getUpdatedAt())
-            .build();
     }
 } 

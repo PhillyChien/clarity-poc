@@ -1,33 +1,53 @@
 package com.aifinancial.clarity.poc.service.impl;
 
-import com.aifinancial.clarity.poc.dto.response.FolderResponse;
-import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.dto.response.TodoResponse;
-import com.aifinancial.clarity.poc.model.Folder;
-import com.aifinancial.clarity.poc.model.Todo;
-import com.aifinancial.clarity.poc.repository.FolderRepository;
-import com.aifinancial.clarity.poc.repository.TodoRepository;
-import com.aifinancial.clarity.poc.service.ModeratorService;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.aifinancial.clarity.poc.converter.UserConverter;
+import com.aifinancial.clarity.poc.dto.response.FolderResponse;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.dto.response.TodoResponse;
+import com.aifinancial.clarity.poc.dto.response.UserResponse;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
+import com.aifinancial.clarity.poc.model.Folder;
+import com.aifinancial.clarity.poc.model.Todo;
+import com.aifinancial.clarity.poc.model.User;
+import com.aifinancial.clarity.poc.repository.FolderRepository;
+import com.aifinancial.clarity.poc.repository.TodoRepository;
+import com.aifinancial.clarity.poc.repository.UserRepository;
+import com.aifinancial.clarity.poc.service.ModeratorService;
 
 @Service
 public class ModeratorServiceImpl implements ModeratorService {
 
     private final FolderRepository folderRepository;
     private final TodoRepository todoRepository;
+    private final UserRepository userRepository;
+    private final UserConverter userConverter;
 
-    public ModeratorServiceImpl(FolderRepository folderRepository, TodoRepository todoRepository) {
+    public ModeratorServiceImpl(FolderRepository folderRepository, TodoRepository todoRepository, 
+                                UserRepository userRepository, UserConverter userConverter) {
         this.folderRepository = folderRepository;
         this.todoRepository = todoRepository;
+        this.userRepository = userRepository;
+        this.userConverter = userConverter;
     }
 
     @Override
-    public List<FolderResponse> getAllFolders() {
-        List<Folder> folders = folderRepository.findAll();
+    public List<UserResponse> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return userConverter.toDtoList(users);
+    }
+
+    @Override
+    public List<FolderResponse> getFoldersByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        
+        List<Folder> folders = folderRepository.findByOwnerOrderByCreatedAtDesc(user);
         return folders.stream()
                 .map(folder -> FolderResponse.builder()
                         .id(folder.getId())
@@ -40,8 +60,11 @@ public class ModeratorServiceImpl implements ModeratorService {
     }
 
     @Override
-    public List<TodoResponse> getAllTodos() {
-        List<Todo> todos = todoRepository.findAll();
+    public List<TodoResponse> getTodosByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        
+        List<Todo> todos = todoRepository.findByOwnerOrderByCreatedAtDesc(user);
         return todos.stream()
                 .map(todo -> TodoResponse.builder()
                         .id(todo.getId())
@@ -60,18 +83,14 @@ public class ModeratorServiceImpl implements ModeratorService {
     @Override
     @Transactional
     public MessageResponse toggleTodoDisabledStatus(Long todoId) {
-        try {
-            Todo todo = todoRepository.findById(todoId)
-                    .orElseThrow(() -> new IllegalArgumentException("Todo not found with ID: " + todoId));
+        Todo todo = todoRepository.findById(todoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + todoId));
 
-            // 切換禁用狀態
-            todo.setDisabled(!todo.isDisabled());
-            todoRepository.save(todo);
+        // 切换禁用状态
+        todo.setDisabled(!todo.isDisabled());
+        todoRepository.save(todo);
 
-            String status = todo.isDisabled() ? "disabled" : "enabled";
-            return new MessageResponse("Todo successfully " + status);
-        } catch (Exception e) {
-            return new MessageResponse("Failed to toggle todo status: " + e.getMessage());
-        }
+        String status = todo.isDisabled() ? "disabled" : "enabled";
+        return new MessageResponse("Todo successfully " + status);
     }
 } 
