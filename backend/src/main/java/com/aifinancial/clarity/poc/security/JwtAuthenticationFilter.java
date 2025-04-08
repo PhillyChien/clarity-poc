@@ -35,15 +35,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && SecurityContextHolder.getContext().getAuthentication() == null) {
-                String username = tokenProvider.getUsernameFromToken(jwt);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-                if (tokenProvider.validateToken(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (StringUtils.hasText(jwt)) {
+                try {
+                    String username = tokenProvider.getUsernameFromToken(jwt);
+                    
+                    if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        try {
+                            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                            
+                            if (tokenProvider.validateToken(jwt, userDetails)) {
+                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities());
+                                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                                SecurityContextHolder.getContext().setAuthentication(authentication);
+                                logger.debug("Set authentication for user: " + username);
+                            } else {
+                                logger.debug("JWT token validation failed for user: " + username);
+                            }
+                        } catch (Exception e) {
+                            logger.debug("Failed to load user details for username: " + username);
+                        }
+                    } else if (username == null) {
+                        logger.debug("Invalid JWT token: could not extract username");
+                    }
+                } catch (Exception ex) {
+                    logger.debug("JWT token processing failed: " + ex.getMessage());
                 }
             }
         } catch (Exception ex) {

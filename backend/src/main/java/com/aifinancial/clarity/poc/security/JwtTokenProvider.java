@@ -1,6 +1,5 @@
 package com.aifinancial.clarity.poc.security;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 
 @Component
@@ -30,8 +28,17 @@ public class JwtTokenProvider {
     private SecretKey key;
     
     public JwtTokenProvider(@Value("${jwt.secret}") String jwtSecret) {
-        // Generate a secure key for HS512 algorithm
-        this.key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+        this.jwtSecret = jwtSecret;
+        
+        // Ensure the key length is sufficient
+        try {
+            // First try using the configured key
+            this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        } catch (io.jsonwebtoken.security.WeakKeyException e) {
+            // If the key is too weak, generate a secure key
+            System.out.println("Warning: Configured JWT key is too weak, using a secure key instead");
+            this.key = Keys.secretKeyFor(io.jsonwebtoken.SignatureAlgorithm.HS512);
+        }
     }
 
     public String generateToken(Authentication authentication) {
@@ -51,33 +58,62 @@ public class JwtTokenProvider {
     }
 
     public String getUsernameFromToken(String token) {
-        return getClaimFromToken(token, Claims::getSubject);
+        try {
+            return getClaimFromToken(token, Claims::getSubject);
+        } catch (Exception e) {
+            return null; // 當令牌無效時返回null
+        }
     }
 
     public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
+        try {
+            return getClaimFromToken(token, Claims::getExpiration);
+        } catch (Exception e) {
+            // 返回過去的日期，表示令牌已過期
+            return new Date(0L);
+        }
     }
 
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = getAllClaimsFromToken(token);
-        return claimsResolver.apply(claims);
+        try {
+            final Claims claims = getAllClaimsFromToken(token);
+            return claimsResolver.apply(claims);
+        } catch (Exception e) {
+            // 拋出異常讓調用方知道無法獲取聲明
+            throw e;
+        }
     }
 
     private Claims getAllClaimsFromToken(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (Exception e) {
+            // 當簽名驗證失敗時，拋出異常讓上層方法捕獲
+            throw e;
+        }
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        try {
+            final String username = getUsernameFromToken(token);
+            return (username != null && username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        } catch (Exception e) {
+            // 任何異常都視為令牌無效
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {
-        final Date expiration = getExpirationDateFromToken(token);
-        return expiration.before(new Date());
+        try {
+            final Date expiration = getExpirationDateFromToken(token);
+            return expiration.before(new Date());
+        } catch (Exception e) {
+            // 如果無法獲取過期時間，視為已過期
+            return true;
+        }
     }
 } 
