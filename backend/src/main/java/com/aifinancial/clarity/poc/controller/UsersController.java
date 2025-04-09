@@ -7,16 +7,19 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
 import com.aifinancial.clarity.poc.dto.response.ErrorResponse;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.dto.response.UserResponse;
-import com.aifinancial.clarity.poc.service.ModeratorService;
+import com.aifinancial.clarity.poc.service.UsersService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,33 +29,55 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/moderator")
+@RequestMapping("/users")
 @CrossOrigin(origins = "*", maxAge = 3600)
-@Tag(name = "Moderator", description = "Moderator operations for managing users, todos and folders")
-@PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
-public class ModeratorController {
+@Tag(name = "Users", description = "User management operations for administrators and moderators")
+public class UsersController {
 
-    private final ModeratorService moderatorService;
+    private final UsersService usersService;
 
-    public ModeratorController(ModeratorService moderatorService) {
-        this.moderatorService = moderatorService;
+    public UsersController(UsersService usersService) {
+        this.usersService = usersService;
     }
 
-    @GetMapping("/users")
+    @GetMapping("")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
     @Operation(summary = "Get all users", 
               description = "Returns a list of all users. Accessible to MODERATOR and SUPER_ADMIN.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "List of users retrieved successfully", 
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserResponse.class)))),
-        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have moderator rights")
+        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have required rights")
     })
     public ResponseEntity<List<UserResponse>> getAllUsers() {
-        return ResponseEntity.ok(moderatorService.getAllUsers());
+        return ResponseEntity.ok(usersService.getAllUsers());
     }
 
-    @GetMapping("/users/{userId}/folders")
+    @PostMapping("/role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Update user role", 
+              description = "Updates a user's role (e.g., promote to MODERATOR). Only accessible to SUPER_ADMIN.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "User role updated successfully", 
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request - Invalid role", 
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden - User does not have admin rights or attempted to promote to SUPER_ADMIN", 
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "User not found", 
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<MessageResponse> updateUserRole(
+            @Parameter(description = "Role update details", required = true)
+            @Valid @RequestBody RoleUpdateRequest roleUpdateRequest) {
+        return ResponseEntity.ok(usersService.updateUserRole(roleUpdateRequest));
+    }
+
+    @GetMapping("/{userId}/folders")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
     @Operation(summary = "Get folders by user ID", 
               description = "Returns a list of folders belonging to the specified user. Accessible to MODERATOR and SUPER_ADMIN.")
     @ApiResponses({
@@ -64,10 +89,11 @@ public class ModeratorController {
     public ResponseEntity<List<FolderResponse>> getFoldersByUserId(
             @Parameter(description = "ID of the user to get folders for", required = true)
             @PathVariable Long userId) {
-        return ResponseEntity.ok(moderatorService.getFoldersByUserId(userId));
+        return ResponseEntity.ok(usersService.getFoldersByUserId(userId));
     }
 
-    @GetMapping("/users/{userId}/todos")
+    @GetMapping("/{userId}/todos")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
     @Operation(summary = "Get todos by user ID", 
               description = "Returns a list of todos belonging to the specified user. Accessible to MODERATOR and SUPER_ADMIN.")
     @ApiResponses({
@@ -79,10 +105,11 @@ public class ModeratorController {
     public ResponseEntity<List<TodoResponse>> getTodosByUserId(
             @Parameter(description = "ID of the user to get todos for", required = true)
             @PathVariable Long userId) {
-        return ResponseEntity.ok(moderatorService.getTodosByUserId(userId));
+        return ResponseEntity.ok(usersService.getTodosByUserId(userId));
     }
 
     @PutMapping("/todos/{todoId}/toggle-status")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
     @Operation(summary = "Toggle todo disabled status", 
               description = "Toggles a todo's disabled status. Accessible to MODERATOR and SUPER_ADMIN.")
     @ApiResponses({
@@ -98,6 +125,6 @@ public class ModeratorController {
     public ResponseEntity<MessageResponse> toggleTodoStatus(
             @Parameter(description = "ID of the todo to toggle", required = true)
             @PathVariable Long todoId) {
-        return ResponseEntity.ok(moderatorService.toggleTodoDisabledStatus(todoId));
+        return ResponseEntity.ok(usersService.toggleTodoDisabledStatus(todoId));
     }
 } 

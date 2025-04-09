@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { folderService } from "../services/backend/folderService";
-import { moderatorService } from "../services/backend/moderatorService";
+import { usersService } from "../services/backend";
 import type {
 	CreateFolderRequest,
 	Folder,
@@ -50,7 +50,7 @@ export const useFolderStore = create<FolderState>((set) => ({
 	fetchFoldersByUserId: async (userId: number) => {
 		try {
 			set({ isLoading: true, error: null });
-			const folders = await moderatorService.getUserFolders(userId);
+			const folders = await usersService.getUserFolders(userId);
 			set({ folders, isLoading: false });
 		} catch (error: unknown) {
 			console.error("Error fetching user folders:", error);

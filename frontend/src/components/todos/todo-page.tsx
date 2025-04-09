@@ -7,11 +7,11 @@ import { CreateFolderModal } from "@/components/todos/create-folder-modal";
 import { DeleteTodoModal } from "@/components/todos/delete-todo-modal";
 import { FolderTree } from "@/components/todos/folder-tree";
 import { ItemDetailView } from "@/components/todos/item-detail-view";
-import { useModeratorStore, useTodoTreeStore } from "@/store";
+import { useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
 import { useTodoStore } from "@/store/todo.store";
 import { useCallback, useEffect } from "react";
-import { UserListSidebar } from "../moderator/user-list-sidebar";
+import { UserListSidebar } from "../users/user-list-sidebar";
 import { usePermission, useAuth } from "@/modules/auth";
 
 export function TodoPage() {
@@ -21,9 +21,6 @@ export function TodoPage() {
 	
 	// 检查是否有查看用户列表的权限
 	const canViewUserList = hasPermission("users.view");
-	
-	// Moderator store for viewing other users' data
-	const { isLoading: isModeratorLoading } = useModeratorStore();
 
 	// Folder store for the current user's folders
 	const {
@@ -65,7 +62,7 @@ export function TodoPage() {
 	} = useTodoTreeStore();
 
 	// Loading state for any store
-	const isLoading = isModeratorLoading || isFolderLoading || isTodoLoading;
+	const isLoading = isFolderLoading || isTodoLoading;
 
 	// Calculate if viewing other user's content
 	const isViewingOtherUserContent = canViewUserList && selectedUserId !== null && user?.id !== selectedUserId;
@@ -127,8 +124,12 @@ export function TodoPage() {
 			try {
 				await addTodo({ title, description, folderId });
 				
-				// 刷新所有待办事项
-				await fetchUserTodos();
+				// 根据用户角色和当前选中的用户决定如何刷新数据
+				if (canViewUserList && selectedUserId) {
+					await fetchTodosByUserId(selectedUserId);
+				} else {
+					await fetchUserTodos();
+				}
 				
 				closeAddTodoModal();
 			} catch (error) {
@@ -138,8 +139,11 @@ export function TodoPage() {
 		[
 			isViewingOtherUserContent,
 			addTodo,
+			fetchTodosByUserId,
 			fetchUserTodos,
 			closeAddTodoModal,
+			canViewUserList,
+			selectedUserId,
 		],
 	);
 
@@ -150,16 +154,23 @@ export function TodoPage() {
 			
 			await addFolder({ name, description });
 			
-			// 刷新文件夹列表
-			await fetchUserFolders();
+			// 根据用户角色和当前选中的用户决定如何刷新数据
+			if (canViewUserList && selectedUserId) {
+				await fetchFoldersByUserId(selectedUserId);
+			} else {
+				await fetchUserFolders();
+			}
 			
 			closeCreateFolderModal();
 		},
 		[
 			isViewingOtherUserContent,
 			addFolder,
-			closeCreateFolderModal,
+			fetchFoldersByUserId,
 			fetchUserFolders,
+			closeCreateFolderModal,
+			canViewUserList,
+			selectedUserId,
 		],
 	);
 
@@ -169,8 +180,10 @@ export function TodoPage() {
 		
 		await deleteTodo(deleteTodoModal.todoId);
 		
-		// 删除后刷新所有待办事项
-		if (!isViewingOtherUserContent) {
+		// 根据用户角色和当前选中的用户决定如何刷新数据
+		if (canViewUserList && selectedUserId) {
+			await fetchTodosByUserId(selectedUserId);
+		} else {
 			await fetchUserTodos();
 		}
 		
@@ -179,8 +192,11 @@ export function TodoPage() {
 		isViewingOtherUserContent,
 		deleteTodo,
 		deleteTodoModal.todoId,
-		closeDeleteTodoModal,
+		fetchTodosByUserId,
 		fetchUserTodos,
+		closeDeleteTodoModal,
+		canViewUserList,
+		selectedUserId,
 	]);
 
 	// Handle banning a todo
@@ -197,8 +213,12 @@ export function TodoPage() {
 		if (todo) {
 			await disableTodo(banTodoModal.todoId);
 			
-			// 刷新列表数据
-			await fetchUserTodos();
+			// 根据用户角色和当前选中的用户决定如何刷新数据
+			if (canViewUserList && selectedUserId) {
+				await fetchTodosByUserId(selectedUserId);
+			} else {
+				await fetchUserTodos();
+			}
 			
 			closeBanTodoModal();
 		}
@@ -209,7 +229,10 @@ export function TodoPage() {
 		closeBanTodoModal,
 		todosByFolder,
 		uncategorizedTodos,
+		fetchTodosByUserId,
 		fetchUserTodos,
+		canViewUserList,
+		selectedUserId,
 	]);
 
 	// Handle clear user selection

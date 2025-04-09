@@ -3,7 +3,9 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useModeratorStore, useTodoTreeStore } from "@/store";
+import { useTodoTreeStore } from "@/store";
+import { useUsersStore } from "@/store/users.store";
+import type { UserResponse } from "@/services/backend/types";
 import { Users } from "lucide-react";
 import { useEffect } from "react";
 
@@ -18,7 +20,7 @@ export function UserListSidebar({
 	onUserSelect,
 	onClearSelection,
 }: UserListSidebarProps) {
-	const { users, isLoading, error, fetchAllUsers } = useModeratorStore();
+	const { users, isLoading, error, fetchAllUsers } = useUsersStore();
 
 	const { selectedUserId, setSelectedUser, setSelectedItem } =
 		useTodoTreeStore();
@@ -77,7 +79,7 @@ export function UserListSidebar({
 			</div>
 
 			<div className="space-y-1">
-				{users.map((user) => (
+				{users.map((user: UserResponse) => (
 					<Button
 						key={user.id}
 						variant="ghost"

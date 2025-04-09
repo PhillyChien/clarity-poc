@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { todoService } from "../services/backend";
-import { moderatorService } from "../services/backend/moderatorService";
+import { todoService, usersService } from "../services/backend";
 import type {
 	CreateTodoRequest,
 	Todo,
@@ -97,8 +96,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 		try {
 			set({ isLoading: true, error: null });
 
-			// 从 moderatorService 获取指定用户的所有待办事项
-			const todos = await moderatorService.getUserTodos(userId);
+			// 从 usersService 获取指定用户的所有待办事项
+			const todos = await usersService.getUserTodos(userId);
 
 			// 按照文件夹ID分组待办事项
 			const todosByFolder: Record<number, Todo[]> = {};
@@ -577,7 +576,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 			set({ isLoading: true, error: null });
 
 			// 调用版主服务的toggleTodoStatus
-			const response = await moderatorService.toggleTodoStatus(todoId);
+			const response = await usersService.toggleTodoStatus(todoId);
 			console.log(`Todo status toggled successfully: ${response.message}`);
 
 			// 更新状态 - 反转禁用状态
