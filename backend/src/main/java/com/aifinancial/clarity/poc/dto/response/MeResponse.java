@@ -1,16 +1,16 @@
 package com.aifinancial.clarity.poc.dto.response;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 用戶信息響應DTO
+ */
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class JwtResponse {
-    private String token;
+public class MeResponse {
     private String type;
     private Long id;
     private String username;

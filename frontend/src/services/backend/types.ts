@@ -10,16 +10,17 @@ export interface RegisterRequest {
 	password: string;
 }
 
-export interface JwtResponse {
-	token: string;
-	type: string;
+// 用户信息响应
+export interface MeResponse {
+	type: string; // 认证类型，如 "Bearer"
 	id: number;
 	username: string;
 	email: string;
 	role: string;
 }
 
-export interface User {
+// 用户对象
+export interface User extends Omit<MeResponse, 'type'> {
 	id: number;
 	username: string;
 	email: string;

@@ -30,7 +30,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/folders")
-@Tag(name = "Folder", description = "Folder management APIs")
+@Tag(name = "Folders", description = "Folder management operations")
 public class FolderController {
 
     private final FolderService folderService;

@@ -41,6 +41,7 @@ async function sendRequest<T>(
 	const requestOptions: RequestInit = {
 		method,
 		headers,
+		credentials: 'include', // 默认包含凭据，支持 Cookie
 		...fetchOptions,
 	};
 

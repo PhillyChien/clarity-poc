@@ -33,7 +33,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/todos")
-@Tag(name = "Todo", description = "Todo management APIs")
+@Tag(name = "Todos", description = "Todo management operations")
 public class TodoController {
 
     private final TodoService todoService;

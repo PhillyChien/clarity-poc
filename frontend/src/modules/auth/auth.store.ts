@@ -14,7 +14,6 @@ export const registerRoleStoreSetCurrentRole = (fn: (role: UserRole | null) => v
 
 interface AuthState {
 	isAuthenticated: boolean;
-	token: string | null;
 	user: User | null;
 	isLoading: boolean;
 	error: string | null;
@@ -26,7 +25,8 @@ interface AuthState {
 		email: string,
 		password: string,
 	) => Promise<void>;
-	logout: () => void;
+	logout: () => Promise<void>;
+	checkAuth: () => Promise<void>;
 	setUser: (user: User | null) => void;
 	clearError: () => void;
 }
@@ -36,7 +36,6 @@ export const useAuthStore = create<AuthState>()(
 	persist(
 		(set) => ({
 			isAuthenticated: false,
-			token: null,
 			user: null,
 			isLoading: false,
 			error: null,
@@ -45,27 +44,29 @@ export const useAuthStore = create<AuthState>()(
 			login: async (username: string, password: string) => {
 				try {
 					set({ isLoading: true, error: null });
-					const response = await authService.login({ username, password });
-
-					// Save token and user info
-					const user = authService.buildUserFromJwtResponse(response);
+					
+					// 先調用登錄接口
+					await authService.login({ username, password });
+					
+					// 再獲取用戶信息
+					const userInfo = await authService.getCurrentUser();
+					
 					set({
-						token: response.token,
-						user: user,
+						user: userInfo,
 						isAuthenticated: true,
 						isLoading: false,
+						error: null
 					});
 					
 					// Update role in role store
 					if (setCurrentRole) {
-						setCurrentRole(user.role as UserRole);
+						setCurrentRole(userInfo.role as UserRole);
 					}
 				} catch (error) {
 					set({
 						isLoading: false,
 						error: error instanceof Error ? error.message : "Login failed",
 						isAuthenticated: false,
-						token: null,
 						user: null,
 					});
 					
@@ -80,30 +81,29 @@ export const useAuthStore = create<AuthState>()(
 			register: async (username: string, email: string, password: string) => {
 				try {
 					set({ isLoading: true, error: null });
-					// Register user
+					
+					// 先调用注册接口
 					await authService.register({ username, email, password });
-
-					// Auto login after successful registration
-					const loginResponse = await authService.login({ username, password });
-					const user = authService.buildUserFromJwtResponse(loginResponse);
-
+					
+					// 注册成功后获取用户信息
+					const userInfo = await authService.getCurrentUser();
+					
 					set({
-						token: loginResponse.token,
-						user: user,
+						user: userInfo,
 						isAuthenticated: true,
 						isLoading: false,
+						error: null
 					});
 					
 					// Update role in role store
 					if (setCurrentRole) {
-						setCurrentRole(user.role as UserRole);
+						setCurrentRole(userInfo.role as UserRole);
 					}
 				} catch (error) {
 					set({
 						isLoading: false,
 						error: error instanceof Error ? error.message : "Registration failed",
 						isAuthenticated: false,
-						token: null,
 						user: null,
 					});
 					
@@ -115,23 +115,69 @@ export const useAuthStore = create<AuthState>()(
 			},
 
 			// Logout action
-			logout: () => {
-				set({
-					isAuthenticated: false,
-					token: null,
-					user: null,
-					error: null,
-				});
-				
-				// Clear role in role store
-				if (setCurrentRole) {
-					setCurrentRole(null);
+			logout: async () => {
+				try {
+					// 调用后端注销接口清除 Cookie
+					await authService.logout();
+				} catch (error) {
+					console.error("Logout failed", error);
+				} finally {
+					set({
+						isAuthenticated: false,
+						user: null,
+						error: null,
+					});
+					
+					// Clear role in role store
+					if (setCurrentRole) {
+						setCurrentRole(null);
+					}
+				}
+			},
+			
+			// Check authentication status
+			checkAuth: async () => {
+				try {
+					set({ isLoading: true });
+					// 通过 authService.getCurrentUser 接口获取当前用户信息
+					const userInfo = await authService.getCurrentUser();
+					
+					set({
+						user: userInfo,
+						isAuthenticated: true,
+						isLoading: false,
+						error: null
+					});
+					
+					// Update role in role store
+					if (setCurrentRole) {
+						setCurrentRole(userInfo.role as UserRole);
+					}
+				} catch (error) {
+					// 不显示错误信息，因为这是自动检查
+					console.debug('Auth check failed:', error);
+					
+					// 如果未认证或发生错误，清空状态
+					set({
+						isAuthenticated: false,
+						user: null,
+						isLoading: false,
+						error: null // 不设置错误消息
+					});
+					
+					// Clear role in role store
+					if (setCurrentRole) {
+						setCurrentRole(null);
+					}
 				}
 			},
 
 			// Set user
 			setUser: (user: User | null) => {
-				set({ user });
+				set({ 
+					user,
+					isAuthenticated: !!user,
+				});
 				
 				// Update role in role store when user is updated
 				if (setCurrentRole) {
@@ -147,16 +193,16 @@ export const useAuthStore = create<AuthState>()(
 		{
 			name: "auth-storage", // Local storage key
 			partialize: (state) => ({
-				token: state.token,
 				user: state.user,
+				isAuthenticated: state.isAuthenticated,
 			}),
 		},
 	),
 );
 
-// Helper function to get token for apiClient
+// Helper function for API client (always returns null since we use HTTP-only cookies)
 export const getAuthToken = (): string | null => {
-	return useAuthStore.getState().token;
+	return null;
 };
 
 // Helper function to get current user
@@ -166,7 +212,7 @@ export const getCurrentUser = (): User | null => {
 
 // Simple authentication hook
 export function useAuth() {
-	const { isAuthenticated, user, login, logout, register, isLoading, error, clearError } = useAuthStore();
+	const { isAuthenticated, user, login, logout, register, checkAuth, isLoading, error, clearError } = useAuthStore();
 
 	return {
 		isAuthenticated,
@@ -174,6 +220,7 @@ export function useAuth() {
 		login,
 		logout,
 		register,
+		checkAuth,
 		isLoading,
 		error,
 		clearError

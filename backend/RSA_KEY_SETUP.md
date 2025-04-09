@@ -1,0 +1,106 @@
+# RSA Key Setup Guide
+
+This document explains how to generate RSA key pairs for JWT authentication and configure them in the system.
+
+## Why RSA Keys?
+
+We use RSA key pairs to sign and verify JWT (JSON Web Tokens). This approach has the following advantages:
+
+1. **Security**: Using asymmetric encryption algorithms (RSA) is more secure than symmetric encryption (like HMAC)
+2. **Separability**: Public keys can be safely shared with clients to verify tokens, while private keys remain only on the server
+3. **Consistency**: Using fixed keys ensures that tokens remain valid across service restarts
+
+## Generating RSA Key Pairs
+
+You can generate RSA key pairs using OpenSSL:
+
+1. Generate an RSA private key:
+   ```bash
+   openssl genrsa -out private_key.pem 2048
+   ```
+
+2. Extract the public key from the private key:
+   ```bash
+   openssl rsa -in private_key.pem -pubout -out public_key.pem
+   ```
+
+3. Generate a unique KID (Key ID):
+   ```bash
+   openssl rand -hex 16
+   ```
+
+## Configuring RSA Keys
+
+There are two ways to configure RSA keys:
+
+### Method 1: Using PEM Format Key Files (Recommended)
+
+This is the simplest and most secure method, using standard PEM format key files:
+
+1. Place the generated `private_key.pem` and `public_key.pem` files in a secure location
+2. Configure the following environment variables to point to these files:
+   ```bash
+   export JWT_RSA_PRIVATE_KEY_FILE="/path/to/private_key.pem"
+   export JWT_RSA_PUBLIC_KEY_FILE="/path/to/public_key.pem"
+   export JWT_KID="your-key-id"
+   ```
+
+3. Or in `application.yml`:
+   ```yaml
+   jwt:
+     rsa:
+       private-key-file: "/path/to/private_key.pem"
+       public-key-file: "/path/to/public_key.pem"
+     kid: "your-key-id"
+   ```
+
+### Method 2: Using Environment Variables (Base64 Encoded)
+
+Convert the PEM files to Base64 format and provide them through environment variables:
+
+```bash
+# Convert private key to Base64 (remove headers and newlines)
+export JWT_RSA_PRIVATE_KEY=$(cat private_key.pem | grep -v "BEGIN\|END" | tr -d '\n')
+
+# Convert public key to Base64 (remove headers and newlines)
+export JWT_RSA_PUBLIC_KEY=$(cat public_key.pem | grep -v "BEGIN\|END" | tr -d '\n')
+
+export JWT_KID="your-key-id"
+```
+
+## Key Priority
+
+The system looks for key configurations in the following order:
+
+1. PEM file paths (`private-key-file` and `public-key-file`)
+2. Base64 encoded strings (`private-key` and `public-key`)
+3. If neither is configured, the system will generate temporary keys
+
+## Important Notes
+
+1. **Secure the private key**: The private key must be kept confidential and only used on the server
+2. **File permissions**: Ensure key files are only readable by necessary users
+3. **Rotate keys regularly**: It's recommended to rotate key pairs periodically for enhanced security
+4. **Backup your keys**: Make sure to back up your keys to prevent loss
+5. **Production environments**: In production, it's recommended to use the PEM file method or environment variables
+
+## Development Environment Setup
+
+For the development environment, RSA keys have already been set up:
+
+1. **Key location**: The keys are stored in `backend/src/main/resources/keys/`:
+   - Private key: `private_key.pem`
+   - Public key: `public_key.pem`
+
+2. **Key ID**: A fixed Key ID (`646b2b4576e3e06abfcee95c8e7d19f2`) is configured in `application-dev.yml`
+
+3. **Configuration**: The development environment configuration in `application-dev.yml` already points to these keys using classpath references:
+   ```yaml
+   jwt:
+     rsa:
+       private-key-file: classpath:keys/private_key.pem
+       public-key-file: classpath:keys/public_key.pem
+     kid: 646b2b4576e3e06abfcee95c8e7d19f2
+   ```
+
+This setup allows you to start development without additional configuration. However, these keys should **never** be used in production environments. 

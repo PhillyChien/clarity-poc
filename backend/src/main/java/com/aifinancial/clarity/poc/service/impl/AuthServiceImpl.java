@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.aifinancial.clarity.poc.dto.request.LoginRequest;
 import com.aifinancial.clarity.poc.dto.request.RegisterRequest;
-import com.aifinancial.clarity.poc.dto.response.JwtResponse;
+import com.aifinancial.clarity.poc.dto.response.MeResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.exception.BadRequestException;
 import com.aifinancial.clarity.poc.model.Role;
@@ -35,9 +35,25 @@ public class AuthServiceImpl implements AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
     }
+    
+    /**
+     * 用於 login 方法臨時返回帶有 token 的 MeResponse
+     */
+    public static class TokenMeResponse extends MeResponse {
+        private String token;
+        
+        public TokenMeResponse(String type, Long id, String username, String email, String role, String token) {
+            super(type, id, username, email, role);
+            this.token = token;
+        }
+        
+        public String getToken() {
+            return token;
+        }
+    }
 
     @Override
-    public JwtResponse authenticateUser(LoginRequest loginRequest) {
+    public MeResponse authenticateUser(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
         );
@@ -51,13 +67,14 @@ public class AuthServiceImpl implements AuthService {
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .orElse("");
 
-        return new JwtResponse(
-                jwt,
+        // 使用 TokenMeResponse 返回帶有 token 的響應
+        return new TokenMeResponse(
                 "Bearer",
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
-                role
+                role,
+                jwt
         );
     }
 

@@ -9,15 +9,17 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useRole } from "@/modules/auth";
+import { useNavigate } from "react-router";
 
 export function UserNav() {
 	const { user, logout } = useAuth();
 	const { currentRole } = useRole();
+	const navigate = useNavigate();
 
-	const handleLogout = () => {
-		logout();
-		// Redirect to login page
-		window.location.href = "/login";
+	const handleLogout = async () => {
+		await logout();
+		// 使用 React Router 導航而不是直接修改 window.location.href
+		navigate("/login");
 	};
 
 	if (!user) {
