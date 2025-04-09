@@ -64,7 +64,7 @@ export const useUsersStore = create<UsersState>((set) => ({
 	disableTodo: async (todoId: number) => {
 		try {
 			set({ isLoading: true, error: null });
-			await usersService.disableTodo(todoId);
+			await usersService.toggleTodoStatus(todoId);
 			set({ isLoading: false });
 		} catch (error: unknown) {
 			set({
@@ -79,7 +79,7 @@ export const useUsersStore = create<UsersState>((set) => ({
 	enableTodo: async (todoId: number) => {
 		try {
 			set({ isLoading: true, error: null });
-			await usersService.enableTodo(todoId);
+			await usersService.toggleTodoStatus(todoId);
 			set({ isLoading: false });
 		} catch (error: unknown) {
 			set({

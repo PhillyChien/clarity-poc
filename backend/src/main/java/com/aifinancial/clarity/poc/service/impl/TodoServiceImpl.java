@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
 import com.aifinancial.clarity.poc.exception.UnauthorizedException;
@@ -189,6 +190,42 @@ public class TodoServiceImpl implements TodoService {
         }
         
         todoRepository.delete(todo);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TodoResponse> getTodosByUserId(Long userId) {
+        // Check if current user has moderator or admin privileges
+        if (!isCurrentUserModeratorOrAdmin()) {
+            throw new UnauthorizedException("Not authorized to view todos for this user");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        
+        List<Todo> todos = todoRepository.findByOwnerOrderByCreatedAtDesc(user);
+        return todos.stream()
+                .map(this::mapToTodoResponse)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    @Transactional
+    public MessageResponse toggleTodoDisabledStatus(Long id) {
+        // Check if current user has moderator or admin privileges
+        if (!isCurrentUserModeratorOrAdmin()) {
+            throw new UnauthorizedException("Not authorized to toggle todo disabled status");
+        }
+        
+        Todo todo = todoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + id));
+
+        // Toggle disabled status
+        todo.setDisabled(!todo.isDisabled());
+        todoRepository.save(todo);
+
+        String status = todo.isDisabled() ? "disabled" : "enabled";
+        return new MessageResponse("Todo successfully " + status);
     }
     
     private TodoResponse mapToTodoResponse(Todo todo) {

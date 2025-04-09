@@ -12,14 +12,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
+import com.aifinancial.clarity.poc.dto.response.ErrorResponse;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.service.TodoService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -40,16 +44,25 @@ public class TodoController {
 
     @GetMapping
     @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Get current user's todos", 
-               description = "Retrieves all todos owned by the currently authenticated user")
+    @Operation(summary = "Get todos", 
+               description = "Retrieves todos based on query parameters. If userId is provided and the user has proper permissions, returns todos for that user. Otherwise returns current user's todos.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todos retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = TodoResponse.class))),
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = TodoResponse.class)))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Login required"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions")
+        @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions"),
+        @ApiResponse(responseCode = "404", description = "User not found")
     })
-    public ResponseEntity<List<TodoResponse>> getCurrentUserTodos() {
-        return ResponseEntity.ok(todoService.getCurrentUserTodos());
+    public ResponseEntity<List<TodoResponse>> getTodos(
+            @Parameter(description = "Optional user ID to filter todos by owner") 
+            @RequestParam(required = false) Long userId) {
+        if (userId != null) {
+            // This requires moderator or admin privileges, which is checked in the service
+            return ResponseEntity.ok(todoService.getTodosByUserId(userId));
+        } else {
+            // Otherwise, return current user's todos
+            return ResponseEntity.ok(todoService.getCurrentUserTodos());
+        }
     }
 
     @GetMapping("/folder/{folderId}")
@@ -155,5 +168,25 @@ public class TodoController {
             @PathVariable Long id) {
         todoService.deleteTodo(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/toggle-disabled")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
+    @Operation(summary = "Toggle todo disabled status", 
+               description = "Toggles a todo's disabled status. Accessible to MODERATOR and SUPER_ADMIN.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Todo status toggled successfully",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - Login required"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions"),
+        @ApiResponse(responseCode = "404", description = "Todo not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<MessageResponse> toggleDisabledStatus(
+            @Parameter(description = "ID of the todo to toggle disabled status", required = true)
+            @PathVariable Long id) {
+        return ResponseEntity.ok(todoService.toggleTodoDisabledStatus(id));
     }
 } 

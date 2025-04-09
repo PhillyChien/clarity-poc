@@ -575,7 +575,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 		try {
 			set({ isLoading: true, error: null });
 
-			// 调用版主服务的toggleTodoStatus
+			// 调用待办事项服务的toggleTodoStatus
 			const response = await usersService.toggleTodoStatus(todoId);
 			console.log(`Todo status toggled successfully: ${response.message}`);
 

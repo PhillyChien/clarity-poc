@@ -30,7 +30,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
+import com.aifinancial.clarity.poc.exception.GlobalExceptionHandler;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
 import com.aifinancial.clarity.poc.service.TodoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -52,11 +55,14 @@ public class TodoControllerTest {
     private TodoResponse todoResponse1;
     private TodoResponse todoResponse2;
     private List<TodoResponse> todoResponses;
+    private MessageResponse enabledResponse;
+    private MessageResponse disabledResponse;
 
     @BeforeEach
     void setUp() {
         // 初始化MockMvc
         mockMvc = MockMvcBuilders.standaloneSetup(todoController)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
         
         // 配置ObjectMapper以处理Java 8日期时间类型
@@ -100,6 +106,10 @@ public class TodoControllerTest {
                 .build();
 
         todoResponses = Arrays.asList(todoResponse1, todoResponse2);
+        
+        // 创建消息响应
+        enabledResponse = new MessageResponse("Todo successfully enabled");
+        disabledResponse = new MessageResponse("Todo successfully disabled");
     }
 
     @Test
@@ -115,6 +125,22 @@ public class TodoControllerTest {
                 .andExpect(jsonPath("$[1].title", is("Test Todo 2")));
 
         verify(todoService, times(1)).getCurrentUserTodos();
+    }
+    
+    @Test
+    void testGetTodosByUserId() throws Exception {
+        when(todoService.getTodosByUserId(1L)).thenReturn(todoResponses);
+
+        mockMvc.perform(get("/todos?userId=1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].title", is("Test Todo 1")))
+                .andExpect(jsonPath("$[0].disabled", is(false)))
+                .andExpect(jsonPath("$[1].id", is(2)))
+                .andExpect(jsonPath("$[1].title", is("Test Todo 2")));
+
+        verify(todoService, times(1)).getTodosByUserId(1L);
     }
 
     @Test
@@ -216,6 +242,27 @@ public class TodoControllerTest {
                 .andExpect(jsonPath("$.completed", is(true)));
 
         verify(todoService, times(1)).toggleCompleted(1L);
+    }
+    
+    @Test
+    void testToggleDisabledStatus() throws Exception {
+        when(todoService.toggleTodoDisabledStatus(1L)).thenReturn(disabledResponse);
+
+        mockMvc.perform(put("/todos/1/toggle-disabled"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", is("Todo successfully disabled")));
+
+        verify(todoService, times(1)).toggleTodoDisabledStatus(1L);
+    }
+    
+    @Test
+    void testToggleDisabledStatusNotFound() throws Exception {
+        when(todoService.toggleTodoDisabledStatus(999L)).thenThrow(new ResourceNotFoundException("Todo not found with id: 999"));
+
+        mockMvc.perform(put("/todos/999/toggle-disabled"))
+                .andExpect(status().isNotFound());
+
+        verify(todoService, times(1)).toggleTodoDisabledStatus(999L);
     }
 
     @Test

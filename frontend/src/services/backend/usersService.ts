@@ -37,7 +37,7 @@ export const usersService = {
 	 * @returns 文件夾數組
 	 */
 	getUserFolders: (userId: number): Promise<Folder[]> => {
-		return apiClient.get<Folder[]>(`/users/${userId}/folders`);
+		return apiClient.get<Folder[]>(`/folders?userId=${userId}`);
 	},
 
 	/**
@@ -47,7 +47,7 @@ export const usersService = {
 	 * @returns 待辦事項數組
 	 */
 	getUserTodos: (userId: number): Promise<Todo[]> => {
-		return apiClient.get<Todo[]>(`/users/${userId}/todos`);
+		return apiClient.get<Todo[]>(`/todos?userId=${userId}`);
 	},
 
 	/**
@@ -57,7 +57,7 @@ export const usersService = {
 	 * @returns 包含操作結果消息的響應
 	 */
 	toggleTodoStatus: (todoId: number): Promise<MessageResponse> => {
-		return apiClient.put<MessageResponse>(`/users/todos/${todoId}/toggle-status`, {});
+		return apiClient.put<MessageResponse>(`/todos/${todoId}/toggle-disabled`, {});
 	},
 
 	/**
@@ -67,7 +67,7 @@ export const usersService = {
 	 * @returns 包含操作結果消息的響應
 	 */
 	disableTodo: (todoId: number): Promise<MessageResponse> => {
-		return apiClient.put<MessageResponse>(`/users/todos/${todoId}/toggle-status`, {});
+		return apiClient.put<MessageResponse>(`/todos/${todoId}/toggle-disabled`, {});
 	},
 
 	/**
@@ -77,6 +77,6 @@ export const usersService = {
 	 * @returns 包含操作結果消息的響應
 	 */
 	enableTodo: (todoId: number): Promise<MessageResponse> => {
-		return apiClient.put<MessageResponse>(`/users/todos/${todoId}/toggle-status`, {});
+		return apiClient.put<MessageResponse>(`/todos/${todoId}/toggle-disabled`, {});
 	},
 }; 

@@ -23,15 +23,12 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
-import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.dto.response.UserResponse;
 import com.aifinancial.clarity.poc.exception.BadRequestException;
 import com.aifinancial.clarity.poc.exception.GlobalExceptionHandler;
@@ -60,18 +57,6 @@ public class UsersControllerTest {
     private RoleUpdateRequest roleUpdateRequest;
     private MessageResponse messageResponse;
     private MessageResponse accessDeniedResponse;
-    
-    private FolderResponse folderResponse1;
-    private FolderResponse folderResponse2;
-    private List<FolderResponse> folderResponses;
-    
-    private TodoResponse todoResponse1;
-    private TodoResponse todoResponse2;
-    private TodoResponse todoResponse3;
-    private List<TodoResponse> todoResponses;
-    
-    private MessageResponse enabledResponse;
-    private MessageResponse disabledResponse;
 
     @BeforeEach
     void setUp() {
@@ -121,74 +106,6 @@ public class UsersControllerTest {
         // 創建消息響應
         messageResponse = new MessageResponse("User role updated successfully to MODERATOR");
         accessDeniedResponse = new MessageResponse("Access denied: Cannot promote users to SUPER_ADMIN role");
-        
-        // 創建測試文件夾響應對象
-        folderResponse1 = FolderResponse.builder()
-                .id(1L)
-                .name("Test Folder 1")
-                .ownerId(1L)
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
-        folderResponse2 = FolderResponse.builder()
-                .id(2L)
-                .name("Test Folder 2")
-                .ownerId(2L)
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
-        folderResponses = Arrays.asList(folderResponse1, folderResponse2);
-        
-        // 創建測試待辦事項響應對象
-        todoResponse1 = TodoResponse.builder()
-                .id(1L)
-                .title("Test Todo 1")
-                .description("Test Description 1")
-                .completed(false)
-                .disabled(false)
-                .ownerId(1L)
-                .ownerUsername("normal_user")
-                .folderId(1L)
-                .folderName("Test Folder 1")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
-        todoResponse2 = TodoResponse.builder()
-                .id(2L)
-                .title("Test Todo 2")
-                .description("Test Description 2")
-                .completed(true)
-                .disabled(false)
-                .ownerId(1L)
-                .ownerUsername("normal_user")
-                .folderId(1L)
-                .folderName("Test Folder 1")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
-        todoResponse3 = TodoResponse.builder()
-                .id(3L)
-                .title("Test Todo 3")
-                .description("Test Description 3")
-                .completed(false)
-                .disabled(true)
-                .ownerId(2L)
-                .ownerUsername("moderator_user")
-                .folderId(2L)
-                .folderName("Test Folder 2")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
-                .build();
-
-        todoResponses = Arrays.asList(todoResponse1, todoResponse2, todoResponse3);
-        
-        // 創建消息響應
-        enabledResponse = new MessageResponse("Todo successfully enabled");
-        disabledResponse = new MessageResponse("Todo successfully disabled");
     }
 
     @Test
@@ -275,73 +192,5 @@ public class UsersControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(usersService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
-    }
-    
-    @Test
-    void testGetFoldersByUserId() throws Exception {
-        when(usersService.getFoldersByUserId(1L)).thenReturn(folderResponses);
-
-        mockMvc.perform(get("/users/1/folders"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id", is(1)))
-                .andExpect(jsonPath("$[0].name", is("Test Folder 1")))
-                .andExpect(jsonPath("$[0].ownerId", is(1)))
-                .andExpect(jsonPath("$[1].id", is(2)))
-                .andExpect(jsonPath("$[1].name", is("Test Folder 2")))
-                .andExpect(jsonPath("$[1].ownerId", is(2)));
-
-        verify(usersService, times(1)).getFoldersByUserId(1L);
-    }
-
-    @Test
-    void testGetTodosByUserId() throws Exception {
-        when(usersService.getTodosByUserId(1L)).thenReturn(todoResponses);
-
-        mockMvc.perform(get("/users/1/todos"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)))
-                .andExpect(jsonPath("$[0].id", is(1)))
-                .andExpect(jsonPath("$[0].title", is("Test Todo 1")))
-                .andExpect(jsonPath("$[0].disabled", is(false)))
-                .andExpect(jsonPath("$[1].id", is(2)))
-                .andExpect(jsonPath("$[1].title", is("Test Todo 2")))
-                .andExpect(jsonPath("$[2].id", is(3)))
-                .andExpect(jsonPath("$[2].title", is("Test Todo 3")))
-                .andExpect(jsonPath("$[2].disabled", is(true)));
-
-        verify(usersService, times(1)).getTodosByUserId(1L);
-    }
-
-    @Test
-    void testToggleTodoStatusToDisable() throws Exception {
-        when(usersService.toggleTodoDisabledStatus(1L)).thenReturn(disabledResponse);
-
-        mockMvc.perform(put("/users/todos/1/toggle-status"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("Todo successfully disabled")));
-
-        verify(usersService, times(1)).toggleTodoDisabledStatus(1L);
-    }
-
-    @Test
-    void testToggleTodoStatusToEnable() throws Exception {
-        when(usersService.toggleTodoDisabledStatus(3L)).thenReturn(enabledResponse);
-
-        mockMvc.perform(put("/users/todos/3/toggle-status"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("Todo successfully enabled")));
-
-        verify(usersService, times(1)).toggleTodoDisabledStatus(3L);
-    }
-
-    @Test
-    void testToggleTodoStatusNotFound() throws Exception {
-        when(usersService.toggleTodoDisabledStatus(999L)).thenThrow(new ResourceNotFoundException("Todo not found with id: 999"));
-
-        mockMvc.perform(put("/users/todos/999/toggle-status"))
-                .andExpect(status().isNotFound());
-
-        verify(usersService, times(1)).toggleTodoDisabledStatus(999L);
     }
 } 

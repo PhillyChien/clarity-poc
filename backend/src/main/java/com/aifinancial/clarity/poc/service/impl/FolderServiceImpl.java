@@ -119,6 +119,23 @@ public class FolderServiceImpl implements FolderService {
         
         folderRepository.delete(folder);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FolderResponse> getFoldersByUserId(Long userId) {
+        // Check if current user has moderator or admin privileges
+        if (!isCurrentUserModeratorOrAdmin()) {
+            throw new UnauthorizedException("Not authorized to view folders for this user");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        
+        List<Folder> folders = folderRepository.findByOwnerOrderByCreatedAtDesc(user);
+        return folders.stream()
+                .map(this::mapToFolderResponse)
+                .collect(Collectors.toList());
+    }
     
     private FolderResponse mapToFolderResponse(Folder folder) {
         return FolderResponse.builder()

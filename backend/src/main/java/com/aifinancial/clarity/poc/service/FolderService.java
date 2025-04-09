@@ -16,4 +16,6 @@ public interface FolderService {
     FolderResponse updateFolder(Long id, FolderRequest folderRequest);
     
     void deleteFolder(Long id);
+    
+    List<FolderResponse> getFoldersByUserId(Long userId);
 } 

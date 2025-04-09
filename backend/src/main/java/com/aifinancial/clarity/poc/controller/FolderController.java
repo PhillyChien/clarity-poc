@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
@@ -19,6 +20,7 @@ import com.aifinancial.clarity.poc.service.FolderService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,16 +41,25 @@ public class FolderController {
 
     @GetMapping
     @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Get current user's folders", 
-               description = "Retrieves all folders owned by the currently authenticated user")
+    @Operation(summary = "Get folders", 
+               description = "Retrieves folders based on query parameters. If userId is provided and the user has proper permissions, returns folders for that user. Otherwise returns current user's folders.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Folders retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = FolderResponse.class))),
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = FolderResponse.class)))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Login required"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions")
+        @ApiResponse(responseCode = "403", description = "Forbidden - Insufficient permissions"),
+        @ApiResponse(responseCode = "404", description = "User not found")
     })
-    public ResponseEntity<List<FolderResponse>> getCurrentUserFolders() {
-        return ResponseEntity.ok(folderService.getCurrentUserFolders());
+    public ResponseEntity<List<FolderResponse>> getFolders(
+            @Parameter(description = "Optional user ID to filter folders by owner") 
+            @RequestParam(required = false) Long userId) {
+        if (userId != null) {
+            // This requires moderator or admin privileges, which is checked in the service
+            return ResponseEntity.ok(folderService.getFoldersByUserId(userId));
+        } else {
+            // Otherwise, return current user's folders
+            return ResponseEntity.ok(folderService.getCurrentUserFolders());
+        }
     }
 
     @GetMapping("/{id}")
