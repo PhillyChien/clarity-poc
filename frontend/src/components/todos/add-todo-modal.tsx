@@ -12,46 +12,39 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFolderStore } from "@/store/folder.store";
-import { useUIStore } from "@/store/ui.store";
 import { useState } from "react";
 
 interface AddTodoModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onAddTodo: (title: string, description: string, folderId?: number) => void;
+	folderId?: number;
+	folderName?: string;
 }
 
 export function AddTodoModal({
 	isOpen,
 	onClose,
 	onAddTodo,
+	folderId,
+	folderName,
 }: AddTodoModalProps) {
 	const { folders } = useFolderStore();
-	const { selectedFolderId } = useUIStore();
+
+	const displayFolderName =
+		folderName ||
+		(folderId ? folders.find((f) => f.id === folderId)?.name : undefined) ||
+		"(-)";
 
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
-	const [folderId, setFolderId] = useState<string | undefined>(
-		selectedFolderId?.toString(),
-	);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (title.trim()) {
-			const parsedFolderId =
-				folderId && folderId !== "uncategorized"
-					? Number.parseInt(folderId)
-					: undefined;
-			onAddTodo(title.trim(), description, parsedFolderId);
+			onAddTodo(title.trim(), description, folderId);
 			handleReset();
 		}
 	};
@@ -59,7 +52,6 @@ export function AddTodoModal({
 	const handleReset = () => {
 		setTitle("");
 		setDescription("");
-		setFolderId(selectedFolderId?.toString());
 	};
 
 	return (
@@ -75,7 +67,7 @@ export function AddTodoModal({
 			<DialogContent className="sm:max-w-[425px]">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
-						<DialogTitle>Add New Todo</DialogTitle>
+						<DialogTitle>Add New Todo to {displayFolderName}</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
@@ -97,21 +89,6 @@ export function AddTodoModal({
 								placeholder="Add details..."
 								rows={3}
 							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="folder">Folder</Label>
-							<Select value={folderId} onValueChange={setFolderId}>
-								<SelectTrigger>
-									<SelectValue placeholder="Select a folder" />
-								</SelectTrigger>
-								<SelectContent>
-									{folders.map((folder) => (
-										<SelectItem key={folder.id} value={folder.id.toString()}>
-											{folder.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
 						</div>
 					</div>
 					<DialogFooter>

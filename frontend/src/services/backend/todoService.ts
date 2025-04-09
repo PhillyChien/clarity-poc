@@ -59,11 +59,11 @@ export const todoService = {
 		console.log(`API call: toggle completion for todo ${todoId}`);
 		return apiClient
 			.patch<Todo>(`/todos/${todoId}/toggle-completed`, {})
-			.then(response => {
+			.then((response) => {
 				console.log(`API response success: todo ${todoId} completion toggled`);
 				return response;
 			})
-			.catch(error => {
+			.catch((error) => {
 				console.error(`API error toggling todo ${todoId}:`, error);
 				throw error;
 			});

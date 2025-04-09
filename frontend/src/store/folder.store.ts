@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { folderService } from "../services/backend/folderService";
+import { moderatorService } from "../services/backend/moderatorService";
 import type {
 	CreateFolderRequest,
 	Folder,
 	UpdateFolderRequest,
 } from "../services/backend/types";
+import { useTodoTreeStore } from "./todo-tree.store";
 
 interface FolderState {
 	folders: Folder[];
@@ -13,6 +15,7 @@ interface FolderState {
 
 	// 动作
 	fetchUserFolders: () => Promise<void>;
+	fetchFoldersByUserId: (userId: number) => Promise<void>;
 	getFolder: (folderId: number) => Promise<Folder | undefined>;
 	addFolder: (folderData: CreateFolderRequest) => Promise<Folder | undefined>;
 	updateFolder: (
@@ -21,6 +24,7 @@ interface FolderState {
 	) => Promise<Folder | undefined>;
 	deleteFolder: (folderId: number) => Promise<void>;
 	clearError: () => void;
+	resetStore: () => void;
 }
 
 export const useFolderStore = create<FolderState>((set) => ({
@@ -38,6 +42,22 @@ export const useFolderStore = create<FolderState>((set) => ({
 			set({
 				isLoading: false,
 				error: error instanceof Error ? error.message : "获取文件夹失败",
+			});
+		}
+	},
+
+	// 获取指定用户的所有文件夹 (版主功能)
+	fetchFoldersByUserId: async (userId: number) => {
+		try {
+			set({ isLoading: true, error: null });
+			const folders = await moderatorService.getUserFolders(userId);
+			set({ folders, isLoading: false });
+		} catch (error: unknown) {
+			console.error("Error fetching user folders:", error);
+			set({
+				folders: [],
+				isLoading: false,
+				error: error instanceof Error ? error.message : "获取用户文件夹失败",
 			});
 		}
 	},
@@ -110,6 +130,19 @@ export const useFolderStore = create<FolderState>((set) => ({
 				folders: state.folders.filter((folder) => folder.id !== folderId),
 				isLoading: false,
 			}));
+
+			// 检查当前选中的项目是否为刚删除的文件夹，如果是则清除选择状态
+			const todoTreeStore = useTodoTreeStore.getState();
+			if (
+				todoTreeStore.selectedItemId === folderId &&
+				todoTreeStore.selectedItemType === "folder"
+			) {
+				console.log(`清除已删除的文件夹 ${folderId} 的选择状态`);
+				useTodoTreeStore.setState({
+					selectedItemId: null,
+					selectedItemType: null,
+				});
+			}
 		} catch (error: unknown) {
 			set({
 				isLoading: false,
@@ -121,5 +154,10 @@ export const useFolderStore = create<FolderState>((set) => ({
 	// 清除错误
 	clearError: () => {
 		set({ error: null });
+	},
+
+	// 重置存储
+	resetStore: () => {
+		set({ folders: [], isLoading: false, error: null });
 	},
 }));

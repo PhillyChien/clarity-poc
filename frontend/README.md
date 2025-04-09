@@ -158,7 +158,7 @@ A recommended structure to organize the frontend codebase:
 * `src/`: Main source code directory.
     * `pages/`: Components representing distinct application routes/pages (e.g., `LoginPage.tsx`, `TodoPage.tsx`, `UserManagementPage.tsx`).
     * `components/`: Reusable UI components, potentially organized by feature:
-        * `folders/`: Components for folder display and interaction (e.g., `FolderTree.tsx`, `FolderItem.tsx`, `CreateFolderModal.tsx`).
+        * `folders/`: Components for folder display and interaction (e.g., `FolderTree.tsx`, `FolderNode.tsx`, `CreateFolderModal.tsx`).
         * `todos/`: Components for todo display and interaction (e.g., `TodoList.tsx`, `TodoItem.tsx`, `AddTodoForm.tsx`, `TodoDetailModal.tsx`).
         * `common/`: General reusable components (e.g., `Button.tsx`, `Modal.tsx`, `Input.tsx`, `Spinner.tsx`).
     * `layouts/`: Components defining the overall page structure (e.g., `MainLayout.tsx` integrating header, sidebar, content area; `AuthLayout.tsx` for login/register pages).
@@ -230,13 +230,13 @@ This section outlines the primary pages (corresponding to routes) and significan
         * **Purpose:** Displays user folders in a list or tree, allowing selection to filter todos. Includes options to manage folders.
         * **Key Components:**
             * Optional static filter items (e.g., "All Tasks", "Today" - requires backend support or client-side logic).
-            * List of `FolderItem.tsx` components representing user folders.
+            * List of `FolderNode.tsx` components representing user folders.
             * Button/Icon to trigger adding a new folder (likely opens `CreateFolderModal.tsx`).
             * Visual indication (highlighting) of the currently selected folder/filter.
         * **Functionality:**
             * Subscribes to `folderStore` to get the list of folders.
             * Handles user clicks on folder items to update the selected folder state (likely in `uiStore`).
-            * Provides actions (e.g., via context menu on `FolderItem`) for renaming or deleting folders, calling corresponding functions in `folderService` and updating `folderStore`.
+            * Provides actions (e.g., via context menu on `FolderNode`) for renaming or deleting folders, calling corresponding functions in `folderService` and updating `folderStore`.
             * Displays loading/error state if fetching folders fails.
 
     ---

@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { todoService } from "../services/backend";
+import { moderatorService } from "../services/backend/moderatorService";
 import type {
 	CreateTodoRequest,
 	Todo,
 	UpdateTodoRequest,
 } from "../services/backend/types";
+import { useTodoTreeStore } from "./todo-tree.store";
 
 interface TodoState {
 	// todos by folder id
@@ -22,6 +24,7 @@ interface TodoState {
 	// Actions
 	fetchTodosByFolder: (folderId: number) => Promise<void>;
 	fetchUncategorizedTodos: () => Promise<void>;
+	fetchTodosByUserId: (userId: number) => Promise<void>;
 	getTodo: (todoId: number) => Promise<Todo | undefined>;
 	addTodo: (todoData: CreateTodoRequest) => Promise<Todo | undefined>;
 	updateTodo: (
@@ -31,7 +34,17 @@ interface TodoState {
 	toggleTodoCompletion: (todoId: number) => Promise<Todo | undefined>;
 	deleteTodo: (todoId: number) => Promise<void>;
 	clearError: () => void;
+	resetStore: () => void;
+	disableTodo: (todoId: number) => Promise<void>;
 }
+
+// helper function: get current folder or uncategorized todos
+const getCurrentTodos = (state: TodoState): Todo[] => {
+	const { todosByFolder, currentFolderId, uncategorizedTodos } = state;
+	return currentFolderId
+		? todosByFolder[currentFolderId] || []
+		: uncategorizedTodos;
+};
 
 export const useTodoStore = create<TodoState>((set, get) => ({
 	todosByFolder: {},
@@ -40,13 +53,15 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 	isLoading: false,
 	error: null,
 
-	// 获取当前文件夹的待办事项
+	// get current folder todos
 	getCurrentTodos: () => {
-		const { todosByFolder, currentFolderId } = get();
-		return currentFolderId ? todosByFolder[currentFolderId] || [] : [];
+		const { todosByFolder, currentFolderId, uncategorizedTodos } = get();
+		return currentFolderId
+			? todosByFolder[currentFolderId] || []
+			: uncategorizedTodos;
 	},
 
-	// 获取未分类的待办事项
+	// fetch uncategorized todos
 	fetchUncategorizedTodos: async () => {
 		try {
 			set({ isLoading: true, error: null });
@@ -60,7 +75,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 			);
 
 			console.log("找到未分类的待办事项:", uncategorized.length);
-			set({ uncategorizedTodos: uncategorized, isLoading: false });
+			set({
+				uncategorizedTodos: uncategorized,
+				isLoading: false,
+			});
 		} catch (error: unknown) {
 			console.error("加载未分类待办事项失败:", error);
 			set({
@@ -69,6 +87,46 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 					error instanceof Error
 						? error.message
 						: "Failed to get uncategorized todos",
+			});
+		}
+	},
+
+	// 获取指定用户的所有待办事项 (版主功能)
+	fetchTodosByUserId: async (userId: number) => {
+		try {
+			set({ isLoading: true, error: null });
+
+			// 从 moderatorService 获取指定用户的所有待办事项
+			const todos = await moderatorService.getUserTodos(userId);
+
+			// 按照文件夹ID分组待办事项
+			const todosByFolder: Record<number, Todo[]> = {};
+			const uncategorized: Todo[] = [];
+
+			for (const todo of todos) {
+				if (todo.folderId) {
+					if (!todosByFolder[todo.folderId]) {
+						todosByFolder[todo.folderId] = [];
+					}
+					todosByFolder[todo.folderId].push(todo);
+				} else {
+					uncategorized.push(todo);
+				}
+			}
+
+			// 更新状态
+			set({
+				todosByFolder,
+				uncategorizedTodos: uncategorized,
+				isLoading: false,
+			});
+		} catch (error: unknown) {
+			console.error(`Error fetching todos for user ${userId}:`, error);
+			set({
+				todosByFolder: {},
+				uncategorizedTodos: [],
+				isLoading: false,
+				error: error instanceof Error ? error.message : "获取用户待办事项失败",
 			});
 		}
 	},
@@ -120,7 +178,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
 			// first check in current folder
 			const state = get();
-			const currentTodos = state.getCurrentTodos();
+			const currentTodos = getCurrentTodos(state);
 			let todo = currentTodos.find((t) => t.id === todoId);
 
 			// then check in all cached folders
@@ -192,7 +250,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 					};
 				} else {
 					// if todo is uncategorized, update uncategorized list
-					get().fetchUncategorizedTodos();
+					newState.uncategorizedTodos = [...state.uncategorizedTodos, newTodo];
 				}
 
 				return newState;
@@ -256,14 +314,6 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 								updatedTodo,
 							],
 						};
-
-						// if was uncategorized, now has folder, update uncategorized list
-						if (isInUncategorized) {
-							get().fetchUncategorizedTodos();
-						}
-					} else {
-						// if was uncategorized, now has folder, update uncategorized list
-						get().fetchUncategorizedTodos();
 					}
 				} else if (newFolderId) {
 					// if folder not changed, update only corresponding folder
@@ -274,8 +324,22 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 								t.id === todoId ? updatedTodo : t,
 							) || [],
 					};
-				} else if (isInUncategorized) {
-					// if uncategorized todo updated, update uncategorized list
+				}
+
+				// 更新未分类列表
+				if (isInUncategorized && newFolderId) {
+					// 如果从未分类移到文件夹，从未分类列表中移除
+					newState.uncategorizedTodos = state.uncategorizedTodos.filter(
+						(t) => t.id !== todoId,
+					);
+				} else if (!isInUncategorized && !newFolderId) {
+					// 如果从文件夹移到未分类，添加到未分类列表
+					newState.uncategorizedTodos = [
+						...state.uncategorizedTodos,
+						updatedTodo,
+					];
+				} else if (isInUncategorized && !newFolderId) {
+					// 如果在未分类列表中更新，更新该项
 					newState.uncategorizedTodos = state.uncategorizedTodos.map((t) =>
 						t.id === todoId ? updatedTodo : t,
 					);
@@ -317,7 +381,9 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
 			// check all folders
 			if (!existingTodo) {
-				for (const [folderIdStr, todos] of Object.entries(state.todosByFolder)) {
+				for (const [folderIdStr, todos] of Object.entries(
+					state.todosByFolder,
+				)) {
 					existingTodo = todos.find((t) => t.id === todoId);
 					if (existingTodo) {
 						foundInFolder = Number(folderIdStr);
@@ -334,11 +400,15 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 				}
 			}
 
-			console.log(`[Toggle] Found todo: ${existingTodo?.title}, completed: ${existingTodo?.completed}`);
+			console.log(
+				`[Toggle] Found todo: ${existingTodo?.title}, completed: ${existingTodo?.completed}`,
+			);
 
 			// toggle todo completion on server
 			const updatedTodo = await todoService.toggleTodoCompletion(todoId);
-			console.log(`[Toggle] API response: ${updatedTodo?.title}, completed: ${updatedTodo?.completed}`);
+			console.log(
+				`[Toggle] API response: ${updatedTodo?.title}, completed: ${updatedTodo?.completed}`,
+			);
 
 			// update local state
 			set((state) => {
@@ -349,25 +419,30 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 				if (foundInFolder !== null) {
 					newState.todosByFolder = {
 						...state.todosByFolder,
-						[foundInFolder]: state.todosByFolder[foundInFolder]?.map((t) =>
-							t.id === todoId ? {
-								...t,
-								completed: !t.completed // ensure toggled locally
-							} : t,
-						) || [],
+						[foundInFolder]:
+							state.todosByFolder[foundInFolder]?.map((t) =>
+								t.id === todoId
+									? {
+											...t,
+											completed: !t.completed, // ensure toggled locally
+										}
+									: t,
+							) || [],
 					};
 				}
 
 				// 2. update in uncategorized list if found there
 				if (foundInUncategorized || !updatedTodo.folderId) {
 					newState.uncategorizedTodos = state.uncategorizedTodos.map((t) =>
-						t.id === todoId ? {
-							...t,
-							completed: !t.completed // ensure toggled locally
-						} : t,
+						t.id === todoId
+							? {
+									...t,
+									completed: !t.completed, // ensure toggled locally
+								}
+							: t,
 					);
 				}
-				
+
 				// 3. if not found anywhere but we have updated todo, make sure it's in the right place
 				if (!foundInFolder && !foundInUncategorized) {
 					if (updatedTodo.folderId) {
@@ -377,14 +452,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 							...state.todosByFolder,
 							[folderId]: [
 								...(state.todosByFolder[folderId] || []),
-								updatedTodo
-							]
+								updatedTodo,
+							],
 						};
 					} else {
 						// add to uncategorized
 						newState.uncategorizedTodos = [
 							...state.uncategorizedTodos,
-							updatedTodo
+							updatedTodo,
 						];
 					}
 				}
@@ -438,35 +513,38 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 			await todoService.deleteTodo(todoId);
 
 			// update local state
-			if (isInFolder && folderId !== null) {
-				set((state) => ({
-					todosByFolder: {
-						...state.todosByFolder,
-						[folderId as number]:
-							state.todosByFolder[folderId as number]?.filter(
-								(t) => t.id !== todoId,
-							) || [],
-					},
-					isLoading: false,
-				}));
-			} else if (isInUncategorized) {
-				set((state) => ({
-					uncategorizedTodos: state.uncategorizedTodos.filter(
-						(t) => t.id !== todoId,
-					),
-					isLoading: false,
-				}));
-			} else {
-				// if not found in local state, refresh cache
-				set({ isLoading: false });
+			set((state) => {
+				const newState = { ...state, isLoading: false };
 
-				// if current has selected folder, refresh folder todos
-				if (state.currentFolderId) {
-					get().fetchTodosByFolder(state.currentFolderId);
+				if (isInFolder && folderId !== null) {
+					newState.todosByFolder = {
+						...state.todosByFolder,
+						[folderId]:
+							state.todosByFolder[folderId]?.filter((t) => t.id !== todoId) ||
+							[],
+					};
 				}
 
-				// refresh uncategorized todos
-				get().fetchUncategorizedTodos();
+				if (isInUncategorized) {
+					newState.uncategorizedTodos = state.uncategorizedTodos.filter(
+						(t) => t.id !== todoId,
+					);
+				}
+
+				return newState;
+			});
+
+			// 检查当前选中的项目是否为刚删除的 todo，如果是则清除选择状态
+			const todoTreeStore = useTodoTreeStore.getState();
+			if (
+				todoTreeStore.selectedItemId === todoId &&
+				todoTreeStore.selectedItemType === "todo"
+			) {
+				console.log(`清除已删除的 Todo ${todoId} 的选择状态`);
+				useTodoTreeStore.setState({
+					selectedItemId: null,
+					selectedItemType: null,
+				});
 			}
 		} catch (error: unknown) {
 			set({
@@ -479,5 +557,86 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 	// clearError clear error
 	clearError: () => {
 		set({ error: null });
+	},
+
+	// resetStore reset the store
+	resetStore: () => {
+		set({
+			todosByFolder: {},
+			uncategorizedTodos: [],
+			currentFolderId: null,
+			isLoading: false,
+			error: null,
+		});
+	},
+
+	// disableTodo - 禁用或启用待办事项 (由版主调用)
+	disableTodo: async (todoId: number) => {
+		try {
+			set({ isLoading: true, error: null });
+
+			// 调用版主服务的toggleTodoStatus
+			const response = await moderatorService.toggleTodoStatus(todoId);
+			console.log(`Todo status toggled successfully: ${response.message}`);
+
+			// 更新状态 - 反转禁用状态
+			set((state) => {
+				// 在所有地方查找待办事项
+				const newState = { ...state, isLoading: false };
+				let foundAndUpdated = false;
+
+				// 更新文件夹中的待办事项
+				for (const folderId in newState.todosByFolder) {
+					const folderTodos = newState.todosByFolder[folderId];
+					const todoIndex = folderTodos.findIndex((t) => t.id === todoId);
+
+					if (todoIndex !== -1) {
+						// 找到后反转禁用状态
+						newState.todosByFolder[folderId] = [
+							...folderTodos.slice(0, todoIndex),
+							{
+								...folderTodos[todoIndex],
+								disabled: !folderTodos[todoIndex].disabled,
+							},
+							...folderTodos.slice(todoIndex + 1),
+						];
+						foundAndUpdated = true;
+						break;
+					}
+				}
+
+				// 检查未分类的待办事项
+				if (!foundAndUpdated) {
+					const uncatIndex = newState.uncategorizedTodos.findIndex(
+						(t) => t.id === todoId,
+					);
+					if (uncatIndex !== -1) {
+						newState.uncategorizedTodos = [
+							...newState.uncategorizedTodos.slice(0, uncatIndex),
+							{
+								...newState.uncategorizedTodos[uncatIndex],
+								disabled: !newState.uncategorizedTodos[uncatIndex].disabled,
+							},
+							...newState.uncategorizedTodos.slice(uncatIndex + 1),
+						];
+					}
+				}
+
+				return newState;
+			});
+
+			// 选中项目发生变化后，通知TodoTreeStore以更新UI
+			const { selectedItemId, selectedItemType } = useTodoTreeStore.getState();
+			if (selectedItemId === todoId && selectedItemType === "todo") {
+				// 重新选中该项目以刷新详情视图
+				useTodoTreeStore.getState().setSelectedItem(todoId, "todo");
+			}
+		} catch (error: unknown) {
+			console.error("Failed to toggle todo disabled status:", error);
+			set({
+				isLoading: false,
+				error: error instanceof Error ? error.message : "禁用待办事项失败",
+			});
+		}
 	},
 }));

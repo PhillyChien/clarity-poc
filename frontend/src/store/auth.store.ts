@@ -1,7 +1,13 @@
+import { useEffect } from "react";
+import type React from "react";
+import { useNavigate } from "react-router";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../services/backend";
 import type { User } from "../services/backend/types";
+
+// Role types for type safety
+export type UserRole = "USER" | "MODERATOR" | "SUPER_ADMIN";
 
 interface AuthState {
 	isAuthenticated: boolean;
@@ -121,11 +127,21 @@ export const getAuthToken = (): string | null => {
 };
 
 // 提供辅助函数检查用户是否具有特定角色
-export const hasRole = (role: string): boolean => {
+export const hasRole = (role: UserRole): boolean => {
 	const user = useAuthStore.getState().user;
 	if (!user) return false;
 
-	return user.role === role;
+	// Super admin has access to everything
+	if (user.role === "SUPER_ADMIN") return true;
+
+	// Moderator has access to moderator and user roles
+	if (user.role === "MODERATOR" && (role === "MODERATOR" || role === "USER"))
+		return true;
+
+	// Regular user only has access to user role
+	if (user.role === "USER" && role === "USER") return true;
+
+	return false;
 };
 
 // 提供辅助函数检查用户是否是管理员（Super Admin）
@@ -137,3 +153,54 @@ export const isAdmin = (): boolean => {
 export const isModerator = (): boolean => {
 	return hasRole("MODERATOR") || hasRole("SUPER_ADMIN");
 };
+
+// 提供辅助函数检查用户是否是普通用户（User）
+export const isUser = (): boolean => {
+	return hasRole("USER");
+};
+
+// 认证及角色检查Hook，提供更方便的接口
+export function useAuth() {
+	const { isAuthenticated, user } = useAuthStore();
+
+	return {
+		isAuthenticated,
+		user,
+		hasRole,
+		isAdmin,
+		isModerator,
+		isUser,
+	};
+}
+
+// 受保护路由组件，提供基于角色的访问控制
+export function ProtectedRoute({
+	children,
+	requiredRole = "USER",
+}: {
+	children: React.ReactNode;
+	requiredRole?: UserRole;
+}): React.ReactNode {
+	const { isAuthenticated } = useAuthStore();
+	const navigate = useNavigate();
+
+	useEffect(() => {
+		// 如果未认证，重定向到登录页面
+		if (!isAuthenticated) {
+			navigate("/login");
+			return;
+		}
+
+		// 如果已认证但没有所需角色，重定向到todos页面
+		if (!hasRole(requiredRole)) {
+			navigate("/todos");
+		}
+	}, [isAuthenticated, requiredRole, navigate]);
+
+	// 如果未认证或没有所需角色，不渲染子组件
+	if (!isAuthenticated || !hasRole(requiredRole)) {
+		return null;
+	}
+
+	return children;
+}

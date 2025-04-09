@@ -1,6 +1,6 @@
 import { getAuthToken } from "../../store/auth.store";
 
-// 从环境变量获取API基础URL
+// Read API base URL from environment variable
 const API_BASE_URL =
 	import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -9,7 +9,7 @@ interface RequestOptions extends RequestInit {
 }
 
 /**
- * 发送HTTP请求的基础函数
+ * Base function to send HTTP requests
  */
 async function sendRequest<T>(
 	endpoint: string,
@@ -19,17 +19,17 @@ async function sendRequest<T>(
 ): Promise<T> {
 	const { requiresAuth = true, ...fetchOptions } = options;
 
-	// 构建完整URL
+	// Build full URL
 	const url = `${API_BASE_URL}${endpoint}`;
 
-	// 准备headers
+	// Prepare headers
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 		Accept: "application/json",
 		...((fetchOptions.headers as Record<string, string>) || {}),
 	};
 
-	// 如果需要授权，添加JWT token
+	// If requires authorization, add JWT token
 	if (requiresAuth) {
 		const token = getAuthToken();
 		if (token) {
@@ -37,14 +37,14 @@ async function sendRequest<T>(
 		}
 	}
 
-	// 配置请求选项
+	// Configure request options
 	const requestOptions: RequestInit = {
 		method,
 		headers,
 		...fetchOptions,
 	};
 
-	// 对于GET和HEAD请求不包含body
+	// For GET and HEAD requests, do not include body
 	if (data && !["GET", "HEAD"].includes(method)) {
 		requestOptions.body = JSON.stringify(data);
 	}
@@ -52,32 +52,32 @@ async function sendRequest<T>(
 	try {
 		const response = await fetch(url, requestOptions);
 
-		// 检查响应状态
+		// Check response status
 		if (!response.ok) {
-			// 尝试解析错误响应
+			// Try to parse error response
 			const errorData = await response.json().catch(() => null);
 			throw new Error(
 				errorData?.message ||
-					`请求失败: ${response.status} ${response.statusText}`,
+					`Request failed: ${response.status} ${response.statusText}`,
 			);
 		}
 
-		// 如果是204 No Content，返回null
+		// If 204 No Content, return null
 		if (response.status === 204) {
 			return null as T;
 		}
 
-		// 解析JSON响应
+		// Parse JSON response
 		return await response.json();
 	} catch (error) {
 		if (error instanceof Error) {
 			throw error;
 		}
-		throw new Error("发送请求时出错");
+		throw new Error("Error sending request");
 	}
 }
 
-// 导出HTTP方法
+// Export HTTP methods
 export const apiClient = {
 	get: <T>(endpoint: string, options?: RequestOptions) =>
 		sendRequest<T>(endpoint, "GET", undefined, options),
