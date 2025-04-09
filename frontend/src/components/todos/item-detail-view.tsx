@@ -8,8 +8,7 @@ import { useFolderStore } from "@/store/folder.store";
 import { Eye, Plus, Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "../ui/badge";
-import { useAuth } from "@/store/auth.store";
-import { usePermission } from "@/store/permission.store";
+import { useAuth, usePermission } from "@/modules/auth";
 
 interface ItemDetailViewProps {
 	isViewingOtherUser?: boolean;

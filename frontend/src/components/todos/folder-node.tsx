@@ -19,8 +19,7 @@ import { cn } from "@/lib/utils";
 import type { Folder as FolderType, Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
-import { usePermission } from "@/store/permission.store";
-import { useAuth } from "@/store/auth.store";
+import { usePermission, useAuth } from "@/modules/auth";
 import {
 	AlertTriangle,
 	ChevronDown,

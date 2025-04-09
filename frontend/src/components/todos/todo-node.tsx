@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useTodoStore } from "@/store/todo.store";
-import { usePermission } from "@/store/permission.store";
-import { useAuth } from "@/store/auth.store";
+import { usePermission, useAuth } from "@/modules/auth";
 import {
 	Ban,
 	CheckCircle,

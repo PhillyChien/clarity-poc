@@ -1,8 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authService } from "../services/backend";
-import type { User } from "../services/backend/types";
-import { useRoleStore, UserRole } from "./role.store";
+import { authService } from "../../services/backend";
+import type { User } from "../../services/backend/types";
+import { UserRole } from "./types";
+
+// Forward declare role store to avoid circular dependency
+let setCurrentRole: ((role: UserRole | null) => void) | null = null;
+
+// Function to be called by role store to set its setCurrentRole function
+export const registerRoleStoreSetCurrentRole = (fn: (role: UserRole | null) => void) => {
+	setCurrentRole = fn;
+};
 
 interface AuthState {
 	isAuthenticated: boolean;
@@ -49,7 +57,9 @@ export const useAuthStore = create<AuthState>()(
 					});
 					
 					// Update role in role store
-					useRoleStore.getState().setCurrentRole(user.role as UserRole);
+					if (setCurrentRole) {
+						setCurrentRole(user.role as UserRole);
+					}
 				} catch (error) {
 					set({
 						isLoading: false,
@@ -60,7 +70,9 @@ export const useAuthStore = create<AuthState>()(
 					});
 					
 					// Clear role in role store
-					useRoleStore.getState().setCurrentRole(null);
+					if (setCurrentRole) {
+						setCurrentRole(null);
+					}
 				}
 			},
 
@@ -83,7 +95,9 @@ export const useAuthStore = create<AuthState>()(
 					});
 					
 					// Update role in role store
-					useRoleStore.getState().setCurrentRole(user.role as UserRole);
+					if (setCurrentRole) {
+						setCurrentRole(user.role as UserRole);
+					}
 				} catch (error) {
 					set({
 						isLoading: false,
@@ -94,7 +108,9 @@ export const useAuthStore = create<AuthState>()(
 					});
 					
 					// Clear role in role store
-					useRoleStore.getState().setCurrentRole(null);
+					if (setCurrentRole) {
+						setCurrentRole(null);
+					}
 				}
 			},
 
@@ -108,7 +124,9 @@ export const useAuthStore = create<AuthState>()(
 				});
 				
 				// Clear role in role store
-				useRoleStore.getState().setCurrentRole(null);
+				if (setCurrentRole) {
+					setCurrentRole(null);
+				}
 			},
 
 			// Set user
@@ -116,7 +134,9 @@ export const useAuthStore = create<AuthState>()(
 				set({ user });
 				
 				// Update role in role store when user is updated
-				useRoleStore.getState().setCurrentRole(user?.role as UserRole | null);
+				if (setCurrentRole) {
+					setCurrentRole(user?.role as UserRole | null);
+				}
 			},
 
 			// Clear error
@@ -139,6 +159,11 @@ export const getAuthToken = (): string | null => {
 	return useAuthStore.getState().token;
 };
 
+// Helper function to get current user
+export const getCurrentUser = (): User | null => {
+	return useAuthStore.getState().user;
+};
+
 // Simple authentication hook
 export function useAuth() {
 	const { isAuthenticated, user, login, logout, register, isLoading, error, clearError } = useAuthStore();
@@ -153,4 +178,4 @@ export function useAuth() {
 		error,
 		clearError
 	};
-}
+} 

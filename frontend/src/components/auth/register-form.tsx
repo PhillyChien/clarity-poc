@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuthStore } from "@/store/auth.store";
+import { useAuth } from "@/modules/auth";
 import { AlertCircle, ArrowRight, Lock, Mail, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -21,7 +21,7 @@ export function RegisterForm() {
 
 	// Get state and actions from auth store
 	const { register, isLoading, error, clearError, isAuthenticated } =
-		useAuthStore();
+		useAuth();
 
 	// Monitor authentication state and redirect when authenticated
 	useEffect(() => {

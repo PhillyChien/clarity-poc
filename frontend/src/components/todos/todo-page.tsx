@@ -7,13 +7,12 @@ import { CreateFolderModal } from "@/components/todos/create-folder-modal";
 import { DeleteTodoModal } from "@/components/todos/delete-todo-modal";
 import { FolderTree } from "@/components/todos/folder-tree";
 import { ItemDetailView } from "@/components/todos/item-detail-view";
-import { useAuth } from "@/store/auth.store";
 import { useModeratorStore, useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
 import { useTodoStore } from "@/store/todo.store";
 import { useCallback, useEffect } from "react";
 import { UserListSidebar } from "../moderator/user-list-sidebar";
-import { usePermission } from "@/store/permission.store";
+import { usePermission, useAuth } from "@/modules/auth";
 
 export function TodoPage() {
 	// Authentication and user state

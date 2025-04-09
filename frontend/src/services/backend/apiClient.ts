@@ -1,4 +1,4 @@
-import { getAuthToken } from "../../store/auth.store";
+import { getAuthToken } from "@/modules/auth";
 
 // Read API base URL from environment variable
 const API_BASE_URL =

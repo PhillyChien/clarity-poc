@@ -5,7 +5,7 @@ import type React from "react";
 import { Logo } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { UserNav } from "@/components/user-nav";
-import { useRole } from "@/store/role.store";
+import { useRole } from "@/modules/auth";
 import { Crown, Shield } from "lucide-react";
 
 interface MainLayoutProps {

@@ -24,7 +24,6 @@ interface UncategorizedFolderNodeProps {
 	isExpanded: boolean;
 	isSelected: boolean;
 	isReadOnly?: boolean;
-	isModerator?: boolean;
 	onToggleExpand: () => void;
 	onAddTodo?: () => void;
 }
@@ -34,7 +33,6 @@ export function UncategorizedFolderNode({
 	isExpanded,
 	isSelected,
 	isReadOnly = false,
-	isModerator = false,
 	onToggleExpand,
 	onAddTodo,
 }: UncategorizedFolderNodeProps) {
@@ -58,7 +56,6 @@ export function UncategorizedFolderNode({
 				) : (
 					todos.map((todo) => (
 						<TodoNode
-							isModerator={isModerator}
 							key={todo.id}
 							todo={todo}
 							isSelected={

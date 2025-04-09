@@ -1,11 +1,9 @@
 import { create } from "zustand";
-import { useAuthStore } from "./auth.store";
 import { useEffect } from "react";
 import type React from "react";
 import { useNavigate } from "react-router";
-
-// Role types for type safety
-export type UserRole = "NORMAL" | "MODERATOR" | "SUPER_ADMIN";
+import { UserRole } from "./types";
+import { getCurrentUser, registerRoleStoreSetCurrentRole } from "./auth.store";
 
 interface RoleState {
   // Current role (derived from auth store)
@@ -32,7 +30,7 @@ export const useRoleStore = create<RoleState>()((set, get) => ({
   currentRole: null,
   
   hasRole: (role: UserRole): boolean => {
-    const user = useAuthStore.getState().user;
+    const user = getCurrentUser();
     if (!user) return false;
     
     const userRole = user.role as UserRole;
@@ -51,12 +49,12 @@ export const useRoleStore = create<RoleState>()((set, get) => ({
   },
   
   isAdmin: (): boolean => {
-    const user = useAuthStore.getState().user;
+    const user = getCurrentUser();
     return user?.role === "SUPER_ADMIN" || false;
   },
   
   isModerator: (): boolean => {
-    const user = useAuthStore.getState().user;
+    const user = getCurrentUser();
     return user?.role === "MODERATOR" || false;
   },
   
@@ -88,6 +86,9 @@ export const useRoleStore = create<RoleState>()((set, get) => ({
     set({ currentRole: role });
   }
 }));
+
+// Register the setCurrentRole function with auth store to avoid circular dependency
+registerRoleStoreSetCurrentRole(useRoleStore.getState().setCurrentRole);
 
 // Provide a Hook for use in components
 export function useRole() {
@@ -124,9 +125,10 @@ export function ProtectedRoute({
 	children: React.ReactNode;
 	requiredRole?: UserRole;
 }): React.ReactNode {
-	const { isAuthenticated } = useAuthStore();
-	const { hasRole } = useRole();
 	const navigate = useNavigate();
+  // We'll now use our auth function directly
+  const isAuthenticated = !!getCurrentUser();
+  const { hasRole } = useRole();
 
 	useEffect(() => {
 		// Redirect to login page if not authenticated
