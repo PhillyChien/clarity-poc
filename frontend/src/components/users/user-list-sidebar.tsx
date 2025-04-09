@@ -6,8 +6,10 @@ import { cn } from "@/lib/utils";
 import { useTodoTreeStore } from "@/store";
 import { useUsersStore } from "@/store/users.store";
 import type { UserResponse } from "@/services/backend/types";
-import { Users } from "lucide-react";
-import { useEffect } from "react";
+import { Users, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePermission } from "@/modules/auth";
+import { UserManagementModal } from "./user-management-modal";
 
 interface UserListSidebarProps {
 	className?: string;
@@ -21,6 +23,9 @@ export function UserListSidebar({
 	onClearSelection,
 }: UserListSidebarProps) {
 	const { users, isLoading, error, fetchAllUsers } = useUsersStore();
+	const { hasPermission } = usePermission();
+	const canManageUsers = hasPermission("users.manage");
+	const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
 
 	const { selectedUserId, setSelectedUser, setSelectedItem } =
 		useTodoTreeStore();
@@ -76,6 +81,17 @@ export function UserListSidebar({
 			<div className="flex items-center mb-4">
 				<Users className="h-5 w-5 mr-2 text-purple-500" />
 				<h3 className="font-medium">Users</h3>
+				{canManageUsers && (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-7 w-7 ml-auto"
+						onClick={() => setIsManagementModalOpen(true)}
+					>
+						<Settings className="h-4 w-4" />
+						<span className="sr-only">Manage Users</span>
+					</Button>
+				)}
 			</div>
 
 			<div className="space-y-1">
@@ -103,6 +119,14 @@ export function UserListSidebar({
 					</Button>
 				))}
 			</div>
+			
+			{/* User Management Modal */}
+			{canManageUsers && (
+				<UserManagementModal 
+					isOpen={isManagementModalOpen} 
+					onClose={() => setIsManagementModalOpen(false)} 
+				/>
+			)}
 		</div>
 	);
 }
