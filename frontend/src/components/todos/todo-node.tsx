@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import type { Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useTodoStore } from "@/store/todo.store";
+import { usePermission } from "@/store/permission.store";
+import { useAuth } from "@/store/auth.store";
 import {
 	Ban,
 	CheckCircle,
@@ -25,19 +27,29 @@ interface TodoNodeProps {
 	todo: Todo;
 	isSelected?: boolean;
 	isReadOnly?: boolean;
-	isModerator?: boolean;
 }
 
 export const TodoNode = memo(function TodoNode({
 	todo,
 	isSelected = false,
 	isReadOnly = false,
-	isModerator = false,
 }: TodoNodeProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const { openDeleteTodoModal, openBanTodoModal, setSelectedItem } =
 		useTodoTreeStore();
 	const { toggleTodoCompletion } = useTodoStore();
+	const { hasPermission } = usePermission();
+	const { user } = useAuth();
+	
+	// Check if current user is the owner of this todo
+	const isOwner = user?.id === todo.ownerId;
+
+	// 检查权限
+	// 只有所有者才能编辑/删除自己的待办事项
+	const canEdit = isOwner && hasPermission("todos.own.edit");
+	const canDelete = isOwner && hasPermission("todos.own.delete");
+	// 只有拥有特殊权限的用户(版主/管理员)可以禁用/解禁待办事项
+	const canBan = hasPermission("todos.others.ban");
 
 	const handleSelect = () => {
 		console.log("Selecting todo with ID:", todo.id);
@@ -47,7 +59,7 @@ export const TodoNode = memo(function TodoNode({
 	const handleToggleComplete = useCallback(
 		async (e: React.MouseEvent) => {
 			e.stopPropagation();
-			if (isLoading || isReadOnly) return;
+			if (isLoading || isReadOnly || !canEdit) return;
 
 			setIsLoading(true);
 			try {
@@ -59,22 +71,20 @@ export const TodoNode = memo(function TodoNode({
 				setIsLoading(false);
 			}
 		},
-		[todo.id, toggleTodoCompletion, isLoading, isReadOnly],
+		[todo.id, toggleTodoCompletion, isLoading, isReadOnly, canEdit],
 	);
 
 	const handleDelete = useCallback(() => {
-		if (isReadOnly) return;
+		if (isReadOnly || !canDelete) return;
 
-		// 打開確認對話框
+		// Open confirmation dialog
 		openDeleteTodoModal(todo.id);
-
-		// 用戶確認後，將在 TodoPage 中使用 TodoStore 的 deleteTodo 方法
-	}, [isReadOnly, todo.id, openDeleteTodoModal]);
+	}, [isReadOnly, canDelete, todo.id, openDeleteTodoModal]);
 
 	const handleBan = useCallback(() => {
-		if (!isModerator) return;
+		if (!canBan) return;
 		openBanTodoModal(todo.id);
-	}, [isModerator, todo.id, openBanTodoModal]);
+	}, [canBan, todo.id, openBanTodoModal]);
 
 	const isCompleted = todo.completed;
 	const isDisabled = todo.disabled;
@@ -93,10 +103,10 @@ export const TodoNode = memo(function TodoNode({
 				className={cn(
 					"h-6 w-6 p-0 flex-shrink-0 z-10",
 					isLoading && "opacity-50 cursor-wait",
-					isReadOnly && "opacity-50 pointer-events-none",
+					(isReadOnly || !canEdit) && "opacity-50 pointer-events-none",
 				)}
 				onClick={handleToggleComplete}
-				disabled={isLoading || isReadOnly}
+				disabled={isLoading || isReadOnly || !canEdit}
 			>
 				{isDisabled ? (
 					<Ban className="h-4 w-4 text-muted-foreground" />
@@ -143,7 +153,7 @@ export const TodoNode = memo(function TodoNode({
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
-					{isModerator && (
+					{canBan && (
 						<DropdownMenuItem
 							onClick={(e) => {
 								e.stopPropagation();
@@ -163,7 +173,7 @@ export const TodoNode = memo(function TodoNode({
 							)}
 						</DropdownMenuItem>
 					)}
-					{!isReadOnly && (
+					{canDelete && (
 						<DropdownMenuItem
 							onClick={(e) => {
 								e.stopPropagation();

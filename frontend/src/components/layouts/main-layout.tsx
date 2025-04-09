@@ -5,8 +5,8 @@ import type React from "react";
 import { Logo } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { UserNav } from "@/components/user-nav";
-import { useAuth } from "@/store";
-import { Shield } from "lucide-react";
+import { useRole } from "@/store/role.store";
+import { Crown, Shield } from "lucide-react";
 
 interface MainLayoutProps {
 	children: React.ReactNode;
@@ -14,7 +14,8 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, sidebar }: MainLayoutProps) {
-	const { isModerator } = useAuth();
+	const { isModerator, isAdmin } = useRole();
+	
 	return (
 		<div className="flex h-screen flex-col">
 			<header className="border-b bg-white">
@@ -22,6 +23,17 @@ export function MainLayout({ children, sidebar }: MainLayoutProps) {
 					<div className="flex items-center gap-6">
 						<Logo />
 
+						{/* Show admin badge if user is a super admin */}
+						{isAdmin() && (
+							<Badge
+								variant="outline"
+								className="bg-amber-50 text-amber-700 border-amber-200 flex items-center"
+							>
+								<Crown className="h-3 w-3 mr-1" />
+								Admin View
+							</Badge>
+						)}
+						
 						{/* Show moderator badge if user is a moderator */}
 						{isModerator() && (
 							<Badge

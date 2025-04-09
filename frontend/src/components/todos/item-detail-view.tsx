@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import type { Folder, Todo, UpdateTodoRequest } from "@/services/backend/types";
 import { useTodoStore, useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
-import { Eye, Plus } from "lucide-react";
+import { Eye, Plus, Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "../ui/badge";
+import { useAuth } from "@/store/auth.store";
+import { usePermission } from "@/store/permission.store";
 
 interface ItemDetailViewProps {
 	isViewingOtherUser?: boolean;
@@ -18,6 +20,10 @@ export function ItemDetailView({
 }: ItemDetailViewProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [viewMode, setViewMode] = useState<"read" | "edit">("read");
+
+	// Authentication and permissions
+	const { user } = useAuth();
+	const { hasPermission } = usePermission();
 
 	// Store
 	const { selectedItemId, selectedItemType, openAddTodoModal } =
@@ -67,6 +73,55 @@ export function ItemDetailView({
 		folders,
 	]);
 
+	// Check permissions based on the selected item
+	const isOwner = useMemo(() => {
+		if (!user || !currentItem) return false;
+		
+		if (selectedItemType === 'todo') {
+			return (currentItem as Todo).ownerId === user.id;
+		}
+		
+		if (selectedItemType === 'folder') {
+			return (currentItem as Folder).ownerId === user.id;
+		}
+		
+		return false;
+	}, [user, currentItem, selectedItemType]);
+	
+	// Permission checks with comprehensive permission evaluation
+	const canView = useMemo(() => {
+		if (!currentItem) return false;
+		
+		if (selectedItemType === 'todo') {
+			return hasPermission(isOwner ? "todos.own.view" : "todos.others.view");
+		}
+		
+		if (selectedItemType === 'folder') {
+			return hasPermission(isOwner ? "folders.own.view" : "folders.others.view");
+		}
+		
+		return false;
+	}, [currentItem, selectedItemType, isOwner, hasPermission]);
+
+	// Can edit only if owner and has permission
+	const canEdit = useMemo(() => {
+		if (!currentItem || !isOwner) return false;
+		
+		if (selectedItemType === 'todo') {
+			return hasPermission("todos.own.edit");
+		}
+		
+		if (selectedItemType === 'folder') {
+			return hasPermission("folders.own.edit");
+		}
+		
+		return false;
+	}, [currentItem, selectedItemType, isOwner, hasPermission]);
+
+	const canCreate = useMemo(() => {
+		return hasPermission("todos.own.create");
+	}, [hasPermission]);
+
 	// When the selected item changes, reset the view mode
 	useEffect(() => {
 		if (selectedItemId !== null) {
@@ -74,12 +129,12 @@ export function ItemDetailView({
 		}
 	}, [selectedItemId]);
 
-	// See other user's content, force read-only mode
+	// Force read-only mode if user doesn't have edit permission
 	useEffect(() => {
-		if (isViewingOtherUser) {
+		if (!canEdit) {
 			setViewMode("read");
 		}
-	}, [isViewingOtherUser]);
+	}, [canEdit]);
 
 	// Load the selected Todo from the server (if not found in local state)
 	useEffect(() => {
@@ -105,10 +160,10 @@ export function ItemDetailView({
 	}, [selectedItemId, selectedItemType, currentItem, getTodo]);
 
 	const handleUpdateTodo = async (todoId: number, data: UpdateTodoRequest) => {
-		if (isViewingOtherUser) return;
+		if (!canEdit) return;
 		await updateTodo(todoId, data);
 
-		// 更新后切换回阅读模式
+		// Switch back to read mode after update
 		setViewMode("read");
 	};
 
@@ -130,12 +185,26 @@ export function ItemDetailView({
 					<p className="mb-6 text-gray-500">
 						Select a folder or todo from the sidebar
 					</p>
-					{!isViewingOtherUser && (
+					{!isViewingOtherUser && canCreate && (
 						<Button onClick={() => openAddTodoModal()}>
 							<Plus className="mr-2 h-4 w-4" />
 							Create New Todo
 						</Button>
 					)}
+				</div>
+			</div>
+		);
+	}
+
+	if (!canView) {
+		return (
+			<div className="flex h-full flex-col items-center justify-center">
+				<div className="text-center">
+					<Lock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+					<h3 className="mb-2 text-xl font-medium">Access Restricted</h3>
+					<p className="mb-6 text-gray-500">
+						You don't have permission to view this item
+					</p>
 				</div>
 			</div>
 		);
@@ -150,21 +219,23 @@ export function ItemDetailView({
 						<h2 className="text-2xl font-bold">{folder.name}</h2>
 						<p className="text-gray-500">Folder</p>
 					</div>
-					{!isViewingOtherUser && (
-						<Button onClick={() => openAddTodoModal(folder.id, folder.name)}>
-							<Plus className="mr-2 h-4 w-4" />
-							Add Todo
-						</Button>
-					)}
-					{isViewingOtherUser && (
-						<Badge
-							variant="outline"
-							className="bg-yellow-50 text-yellow-800 border-yellow-200 flex items-center"
-						>
-							<Eye className="h-3 w-3 mr-1" />
-							Read Only
-						</Badge>
-					)}
+					<div className="flex gap-2">
+						{canEdit && (
+							<Button onClick={() => openAddTodoModal(folder.id, folder.name)}>
+								<Plus className="mr-2 h-4 w-4" />
+								Add Todo
+							</Button>
+						)}
+						{!isOwner && (
+							<Badge
+								variant="outline"
+								className="bg-yellow-50 text-yellow-800 border-yellow-200 flex items-center"
+							>
+								<Eye className="h-3 w-3 mr-1" />
+								Read Only
+							</Badge>
+						)}
+					</div>
 				</div>
 
 				<div className="rounded-lg border p-4">
@@ -187,23 +258,25 @@ export function ItemDetailView({
 						<h2 className="text-xl font-bold">{todo.title}</h2>
 						<p className="text-gray-500">Todo</p>
 					</div>
-					{!isViewingOtherUser && (
-						<Button
-							variant="outline"
-							onClick={() => setViewMode(viewMode === "read" ? "edit" : "read")}
-						>
-							{viewMode === "read" ? "Edit" : "View"}
-						</Button>
-					)}
-					{isViewingOtherUser && (
-						<Badge
-							variant="outline"
-							className="bg-yellow-50 text-yellow-800 border-yellow-200 flex items-center"
-						>
-							<Eye className="h-3 w-3 mr-1" />
-							Read Only
-						</Badge>
-					)}
+					<div className="flex gap-2">
+						{canEdit && (
+							<Button
+								variant="outline"
+								onClick={() => setViewMode(viewMode === "read" ? "edit" : "read")}
+							>
+								{viewMode === "read" ? "Edit" : "View"}
+							</Button>
+						)}
+						{!isOwner && (
+							<Badge
+								variant="outline"
+								className="bg-yellow-50 text-yellow-800 border-yellow-200 flex items-center"
+							>
+								<Eye className="h-3 w-3 mr-1" />
+								Read Only
+							</Badge>
+						)}
+					</div>
 				</div>
 
 				<TodoDetailForm
@@ -213,7 +286,7 @@ export function ItemDetailView({
 						handleUpdateTodo(todo.id, updatedTodo);
 					}}
 					folders={folders}
-					mode={isViewingOtherUser ? "read" : viewMode}
+					mode={canEdit ? viewMode : "read"}
 				/>
 			</div>
 		);

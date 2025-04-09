@@ -25,6 +25,7 @@ interface TodoState {
 	fetchTodosByFolder: (folderId: number) => Promise<void>;
 	fetchUncategorizedTodos: () => Promise<void>;
 	fetchTodosByUserId: (userId: number) => Promise<void>;
+	fetchUserTodos: () => Promise<void>;
 	getTodo: (todoId: number) => Promise<Todo | undefined>;
 	addTodo: (todoData: CreateTodoRequest) => Promise<Todo | undefined>;
 	updateTodo: (
@@ -636,6 +637,44 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 			set({
 				isLoading: false,
 				error: error instanceof Error ? error.message : "禁用待办事项失败",
+			});
+		}
+	},
+
+	// 获取当前用户的所有待办事项
+	fetchUserTodos: async () => {
+		try {
+			set({ isLoading: true, error: null });
+
+			// 从服务器获取当前用户的所有待办事项
+			const todos = await todoService.getUserTodos();
+
+			// 按照文件夹ID分组待办事项
+			const todosByFolder: Record<number, Todo[]> = {};
+			const uncategorized: Todo[] = [];
+
+			for (const todo of todos) {
+				if (todo.folderId) {
+					if (!todosByFolder[todo.folderId]) {
+						todosByFolder[todo.folderId] = [];
+					}
+					todosByFolder[todo.folderId].push(todo);
+				} else {
+					uncategorized.push(todo);
+				}
+			}
+
+			// 更新状态
+			set({
+				todosByFolder,
+				uncategorizedTodos: uncategorized,
+				isLoading: false,
+			});
+		} catch (error: unknown) {
+			console.error("Error fetching user todos:", error);
+			set({
+				isLoading: false,
+				error: error instanceof Error ? error.message : "Failed to get user todos",
 			});
 		}
 	},

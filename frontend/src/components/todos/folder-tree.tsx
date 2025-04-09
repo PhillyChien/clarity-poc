@@ -9,13 +9,11 @@ import { FolderNode } from "./folder-node";
 
 interface FolderTreeProps {
 	loading?: boolean;
-	onAddFolderClick: () => void;
+	ownerId: number;
 	folders?: FolderType[];
 	todosByFolder?: Record<number, Todo[]>;
 	uncategorizedTodos?: Todo[];
 	isViewingOtherUser?: boolean;
-	isModerator?: boolean;
-	onAddTodoClick?: (folderId?: number, folderName?: string) => void;
 }
 
 function FolderTreeSkeleton() {
@@ -43,13 +41,11 @@ function FolderTreeSkeleton() {
 
 export function FolderTree({
 	loading,
-	onAddFolderClick,
+	ownerId,
 	folders = [],
 	todosByFolder = {},
 	uncategorizedTodos = [],
 	isViewingOtherUser = false,
-	isModerator = false,
-	onAddTodoClick,
 }: FolderTreeProps) {
 	// Store hooks
 	const {
@@ -58,6 +54,7 @@ export function FolderTree({
 		expandedFolders,
 		showUncategorizedTodos,
 		toggleUncategorizedTodos,
+		openCreateFolderModal,
 	} = useTodoTreeStore();
 
 	// Render folder list
@@ -71,32 +68,34 @@ export function FolderTree({
 			return (
 				<div key={folder.id} className="mb-1">
 					<FolderNode
-						isModerator={isModerator}
 						folder={folder}
 						todos={folderTodos}
 						isExpanded={isExpanded}
 						isSelected={isSelected}
-						isReadOnly={isViewingOtherUser}
 					/>
 				</div>
 			);
 		});
 
+		const uncategorizedFolder = {
+			id: -1,
+			name: "(-)",
+			ownerId,
+			description: "Uncategorized todos",
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			ownerUsername: "",
+			todoCount: uncategorizedTodos.length,
+		};
 		const uncategorizedNode = (
 			<div key="uncategorized" className="mb-1">
 				<FolderNode
-					isModerator={isModerator}
+					folder={uncategorizedFolder}
 					todos={uncategorizedTodos}
 					isExpanded={showUncategorizedTodos}
 					isSelected={selectedItemType === null && selectedItemId === -1}
-					isReadOnly={isViewingOtherUser}
-					isUncategorized={true}
+					isUncategorized
 					onToggleExpand={toggleUncategorizedTodos}
-					onAddTodo={
-						onAddTodoClick
-							? () => onAddTodoClick(undefined, "Uncategorized")
-							: undefined
-					}
 				/>
 			</div>
 		);
@@ -117,7 +116,7 @@ export function FolderTree({
 						variant="ghost"
 						size="icon"
 						className="h-7 w-7"
-						onClick={onAddFolderClick}
+						onClick={openCreateFolderModal}
 					>
 						<FolderPlus className="h-4 w-4" />
 						<span className="sr-only">Add new folder</span>

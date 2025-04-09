@@ -8,10 +8,12 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuthStore } from "@/store/auth.store";
+import { useAuth } from "@/store/auth.store";
+import { useRole } from "@/store/role.store";
 
 export function UserNav() {
-	const { user, logout } = useAuthStore();
+	const { user, logout } = useAuth();
+	const { currentRole } = useRole();
 
 	const handleLogout = () => {
 		logout();
@@ -42,6 +44,9 @@ export function UserNav() {
 					<div className="flex flex-col space-y-1">
 						<p className="text-sm font-medium">{user.username}</p>
 						<p className="text-xs text-muted-foreground">{user.email}</p>
+						{currentRole && (
+							<p className="text-xs text-muted-foreground">Role: {currentRole}</p>
+						)}
 					</div>
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />

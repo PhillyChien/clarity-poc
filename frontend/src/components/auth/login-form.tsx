@@ -31,10 +31,8 @@ export function LoginForm() {
 		e.preventDefault();
 		clearError();
 
-		// Call login action - error handling is done within the store
 		await login(username, password);
-		// No need for try/catch or redirection here
-		// Redirection will be handled by the useEffect above
+		// Redirection will be handled by the 'isAuthenticated' useEffect
 	};
 
 	return (

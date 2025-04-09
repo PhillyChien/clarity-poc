@@ -7,16 +7,22 @@ import { CreateFolderModal } from "@/components/todos/create-folder-modal";
 import { DeleteTodoModal } from "@/components/todos/delete-todo-modal";
 import { FolderTree } from "@/components/todos/folder-tree";
 import { ItemDetailView } from "@/components/todos/item-detail-view";
-import { useAuth, useModeratorStore, useTodoTreeStore } from "@/store";
+import { useAuth } from "@/store/auth.store";
+import { useModeratorStore, useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
 import { useTodoStore } from "@/store/todo.store";
 import { useCallback, useEffect } from "react";
 import { UserListSidebar } from "../moderator/user-list-sidebar";
+import { usePermission } from "@/store/permission.store";
 
 export function TodoPage() {
 	// Authentication and user state
-	const { isModerator, user } = useAuth();
-
+	const { user } = useAuth();
+	const { hasPermission } = usePermission();
+	
+	// 检查是否有查看用户列表的权限
+	const canViewUserList = hasPermission("users.view");
+	
 	// Moderator store for viewing other users' data
 	const { isLoading: isModeratorLoading } = useModeratorStore();
 
@@ -26,6 +32,7 @@ export function TodoPage() {
 		addFolder,
 		isLoading: isFolderLoading,
 		fetchFoldersByUserId,
+		fetchUserFolders,
 		resetStore: resetFolderStore,
 	} = useFolderStore();
 
@@ -34,9 +41,8 @@ export function TodoPage() {
 		addTodo,
 		deleteTodo,
 		disableTodo,
-		fetchTodosByFolder,
-		fetchUncategorizedTodos,
 		fetchTodosByUserId,
+		fetchUserTodos,
 		todosByFolder,
 		uncategorizedTodos,
 		isLoading: isTodoLoading,
@@ -50,11 +56,9 @@ export function TodoPage() {
 		deleteTodoModal,
 		banTodoModal,
 		createFolderModal,
-		openAddTodoModal,
 		closeAddTodoModal,
 		closeDeleteTodoModal,
 		closeBanTodoModal,
-		openCreateFolderModal,
 		closeCreateFolderModal,
 		selectedUserId,
 		setSelectedUser,
@@ -65,8 +69,9 @@ export function TodoPage() {
 	const isLoading = isModeratorLoading || isFolderLoading || isTodoLoading;
 
 	// Calculate if viewing other user's content
-	const isViewingOtherUserContent =
-		isModerator() && selectedUserId !== null && user?.id !== selectedUserId;
+	const isViewingOtherUserContent = canViewUserList && selectedUserId !== null && user?.id !== selectedUserId;
+
+	const treeOwnerId = isViewingOtherUserContent ? selectedUserId : user?.id || 0;
 
 	// Moderator select user callback function
 	const handleUserSelect = useCallback(
@@ -97,31 +102,23 @@ export function TodoPage() {
 	useEffect(() => {
 		if (!user) return;
 
-		if (isModerator()) {
+		if (canViewUserList) {
 			setSelectedUser(user.id);
 			handleUserSelect(user.id);
 			return;
 		}
 
-		fetchFoldersByUserId(user.id);
-		fetchUncategorizedTodos();
+		// 使用 fetchUserFolders 和 fetchUserTodos 来加载当前用户的数据
+		fetchUserFolders();
+		fetchUserTodos();
 	}, [
-		fetchFoldersByUserId,
-		fetchUncategorizedTodos,
+		fetchUserFolders,
+		fetchUserTodos,
 		handleUserSelect,
-		isModerator,
+		canViewUserList,
 		setSelectedUser,
 		user,
 	]);
-
-	// Handle opening the add todo modal - 使用 store 取代本地方法
-	const handleOpenAddTodoModal = useCallback(
-		(folderId?: number, folderName?: string) => {
-			if (isViewingOtherUserContent) return;
-			openAddTodoModal(folderId, folderName);
-		},
-		[isViewingOtherUserContent, openAddTodoModal],
-	);
 
 	// Handle adding a todo
 	const handleAddTodo = useCallback(
@@ -129,18 +126,11 @@ export function TodoPage() {
 			if (isViewingOtherUserContent) return;
 
 			try {
-				const newTodo = await addTodo({ title, description, folderId });
-
-				if (newTodo) {
-					// If added to a folder, refresh that folder's todos
-					if (newTodo.folderId) {
-						await fetchTodosByFolder(newTodo.folderId);
-					} else {
-						// If uncategorized, refresh those
-						await fetchUncategorizedTodos();
-					}
-				}
-
+				await addTodo({ title, description, folderId });
+				
+				// 刷新所有待办事项
+				await fetchUserTodos();
+				
 				closeAddTodoModal();
 			} catch (error) {
 				console.error("Error adding todo:", error);
@@ -149,8 +139,7 @@ export function TodoPage() {
 		[
 			isViewingOtherUserContent,
 			addTodo,
-			fetchTodosByFolder,
-			fetchUncategorizedTodos,
+			fetchUserTodos,
 			closeAddTodoModal,
 		],
 	);
@@ -159,29 +148,47 @@ export function TodoPage() {
 	const handleCreateFolder = useCallback(
 		async (name: string, description?: string) => {
 			if (isViewingOtherUserContent) return;
+			
 			await addFolder({ name, description });
+			
+			// 刷新文件夹列表
+			await fetchUserFolders();
+			
 			closeCreateFolderModal();
 		},
-		[isViewingOtherUserContent, addFolder, closeCreateFolderModal],
+		[
+			isViewingOtherUserContent,
+			addFolder,
+			closeCreateFolderModal,
+			fetchUserFolders,
+		],
 	);
 
 	// Handle deleting a todo
 	const handleDeleteTodo = useCallback(async () => {
 		if (isViewingOtherUserContent || !deleteTodoModal.todoId) return;
+		
 		await deleteTodo(deleteTodoModal.todoId);
+		
+		// 删除后刷新所有待办事项
+		if (!isViewingOtherUserContent) {
+			await fetchUserTodos();
+		}
+		
 		closeDeleteTodoModal();
 	}, [
 		isViewingOtherUserContent,
 		deleteTodo,
 		deleteTodoModal.todoId,
 		closeDeleteTodoModal,
+		fetchUserTodos,
 	]);
 
 	// Handle banning a todo
 	const handleBanTodo = useCallback(async () => {
-		if (!isModerator() || !banTodoModal.todoId) return;
+		if (!hasPermission("todos.others.ban") || !banTodoModal.todoId) return;
 
-		// 查找待办事项的当前状态
+		// 找到待办事项的当前状态
 		const allTodos = [
 			...Object.values(todosByFolder).flat(),
 			...uncategorizedTodos,
@@ -190,15 +197,20 @@ export function TodoPage() {
 
 		if (todo) {
 			await disableTodo(banTodoModal.todoId);
+			
+			// 刷新列表数据
+			await fetchUserTodos();
+			
 			closeBanTodoModal();
 		}
 	}, [
-		isModerator,
+		hasPermission,
 		disableTodo,
 		banTodoModal.todoId,
 		closeBanTodoModal,
 		todosByFolder,
 		uncategorizedTodos,
+		fetchUserTodos,
 	]);
 
 	// Handle clear user selection
@@ -210,11 +222,12 @@ export function TodoPage() {
 		setSelectedItem(null, null);
 	}, [resetTodoStore, resetFolderStore, resetTodoTreeState, setSelectedItem]);
 
+
 	return (
 		<>
 			<MainLayout
 				sidebar={
-					isModerator() ? (
+					canViewUserList ? (
 						<div className="flex h-full">
 							<UserListSidebar
 								onUserSelect={handleUserSelect}
@@ -222,25 +235,22 @@ export function TodoPage() {
 							/>
 							<div className="flex-1">
 								<FolderTree
-									isModerator
 									loading={isLoading}
-									onAddFolderClick={openCreateFolderModal}
+									ownerId={treeOwnerId}
 									folders={folders}
 									todosByFolder={todosByFolder}
 									uncategorizedTodos={uncategorizedTodos}
 									isViewingOtherUser={isViewingOtherUserContent}
-									onAddTodoClick={handleOpenAddTodoModal}
 								/>
 							</div>
 						</div>
 					) : (
 						<FolderTree
 							loading={isLoading}
-							onAddFolderClick={openCreateFolderModal}
+							ownerId={treeOwnerId}
 							folders={folders}
 							todosByFolder={todosByFolder}
 							uncategorizedTodos={uncategorizedTodos}
-							onAddTodoClick={handleOpenAddTodoModal}
 						/>
 					)
 				}

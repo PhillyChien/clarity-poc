@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import type { Folder as FolderType, Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
+import { usePermission } from "@/store/permission.store";
+import { useAuth } from "@/store/auth.store";
 import {
 	AlertTriangle,
 	ChevronDown,
@@ -28,19 +30,16 @@ import {
 	Plus,
 	Trash,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { TodoNode } from "./todo-node";
 
 interface FolderNodeProps {
-	folder?: FolderType;
+	folder: FolderType;
 	todos: Todo[];
 	isExpanded: boolean;
 	isSelected: boolean;
-	isReadOnly?: boolean;
-	isModerator?: boolean;
 	isUncategorized?: boolean;
 	onToggleExpand?: () => void;
-	onAddTodo?: () => void;
 }
 
 function DeleteFolderDialog({
@@ -86,24 +85,39 @@ export function FolderNode({
 	todos,
 	isExpanded,
 	isSelected,
-	isReadOnly = false,
-	isModerator = false,
 	isUncategorized = false,
 	onToggleExpand,
-	onAddTodo,
 }: FolderNodeProps) {
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const {
 		toggleExpandFolder,
 		setSelectedItem,
-		selectedItemId,
-		selectedItemType,
 	} = useTodoTreeStore();
 	const { deleteFolder } = useFolderStore();
 	const { openAddTodoModal } = useTodoTreeStore();
+	
+	// 使用权限系统
+	const { hasPermission } = usePermission();
+	const { user } = useAuth();
+	// 检查是否是文件夹所有者
+	const isOwner = folder ? user?.id === folder.ownerId : false;
 
+	// 检查权限
+	// 只有所有者可以删除自己的文件夹，管理员和版主不能删除其他人的文件夹
+	const canDeleteFolder = isOwner && hasPermission("folders.own.delete");
+	// 检查是否有创建待办事项的权限
+	const canCreateTodo = hasPermission("todos.own.create");
+	// 只有文件夹的所有者才能在文件夹中添加待办事项
+	// 对于未分类区域，只有当查看的是自己的内容时才能添加
+	const canAddTodo = isOwner && canCreateTodo;
+
+	// 根据权限判断是否为只读状态
+	// 如果是所有者，则不是只读；如果不是所有者，则是只读状态
+	const isReadOnly = !isOwner;
+	
 	const handleDeleteConfirm = () => {
-		if (!isUncategorized && folder) {
+		// 只有文件夹存在、不是未分类文件夹、是所有者、且有权限时才能删除
+		if (!isUncategorized && folder && isOwner && canDeleteFolder) {
 			deleteFolder(folder.id);
 		}
 		setShowDeleteModal(false);
@@ -132,38 +146,52 @@ export function FolderNode({
 
 	const handleAddTodo = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		if (isUncategorized && onAddTodo) {
-			onAddTodo();
-		} else if (folder) {
+		
+		if (isUncategorized) {
+			if (canCreateTodo && isOwner) {
+				openAddTodoModal(undefined, folder.name);
+			}
+			return;
+		}
+		
+		if (folder && canAddTodo) {
 			openAddTodoModal(folder.id, folder.name);
 		}
 	};
 
-	const renderTodos = () => {
-		if (!isExpanded) return null;
+	const renderTodos = useCallback(() => {
+		if (!isExpanded) {
+			return null;
+		}
+
+		if (todos.length === 0) {
+			if (isUncategorized) {
+				return (
+					<div className="pl-6 my-2">
+						<p className="text-sm text-muted-foreground">No Uncategorized Todos</p>
+					</div>	
+				);
+			} else {
+				return (
+					<div className="pl-6 my-2">
+						<p className="text-sm text-muted-foreground">Empty folder</p>
+					</div>
+				);
+			}
+		}
 
 		return (
-			<div className="pl-4 py-1">
-				{todos.length === 0 ? (
-					<div className="text-sm text-muted-foreground py-1 px-2">
-						{isUncategorized ? "No uncategorized todos" : "Empty folder"}
-					</div>
-				) : (
-					todos.map((todo) => (
-						<TodoNode
-							isModerator={isModerator}
-							key={todo.id}
-							todo={todo}
-							isSelected={
-								selectedItemType === "todo" && selectedItemId === todo.id
-							}
-							isReadOnly={isReadOnly}
-						/>
-					))
-				)}
+			<div className="pl-6 mt-1">
+				{todos.map((todo) => (
+					<TodoNode 
+						key={todo.id}
+						todo={todo}
+						isReadOnly={isReadOnly}
+					/>
+				))}
 			</div>
 		);
-	};
+	}, [isExpanded, todos, isUncategorized, isReadOnly]);
 
 	const folderName = isUncategorized ? "(-)" : folder?.name || "";
 
@@ -216,13 +244,13 @@ export function FolderNode({
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
-								{!isReadOnly && (
+								{canAddTodo && (
 									<DropdownMenuItem onClick={handleAddTodo}>
 										<Plus className="mr-2 h-4 w-4" />
 										<span>Add Todo</span>
 									</DropdownMenuItem>
 								)}
-								{!isReadOnly && !isUncategorized && (
+								{canDeleteFolder && !isUncategorized && (
 									<DropdownMenuItem
 										onClick={(e) => {
 											e.stopPropagation();
