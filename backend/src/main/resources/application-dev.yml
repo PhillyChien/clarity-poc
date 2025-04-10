@@ -23,7 +23,6 @@ spring:
 
 # JWT configuration
 jwt:
-  secret: ${JWT_SECRET:TjwkViUOags3v+vFi6sns5Ji+otqLDtO6Wog0D5L4Lj5Gt7bmZ1T4Uee6b+E2Md+kdQF9HGPdejlLEvqkixBCg==}
   expiration-ms: 86400000  # 24 hours
   # RSA key configuration (for JWT signing and JWKS endpoint)
   rsa:

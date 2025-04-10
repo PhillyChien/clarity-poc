@@ -1,13 +1,14 @@
 package com.aifinancial.clarity.poc.config;
 
-import com.aifinancial.clarity.poc.model.Role;
-import com.aifinancial.clarity.poc.model.User;
-import com.aifinancial.clarity.poc.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import com.aifinancial.clarity.poc.model.Role;
+import com.aifinancial.clarity.poc.model.User;
+import com.aifinancial.clarity.poc.repository.UserRepository;
 
 @Configuration
 public class AdminInitializer {
@@ -34,7 +35,7 @@ public class AdminInitializer {
                 superAdmin.setRole(Role.SUPER_ADMIN);
 
                 userRepository.save(superAdmin);
-                System.out.println("Super Admin user created successfully!");
+                System.out.println("Super Admin user created successfully with secure password encoding!");
             } else {
                 System.out.println("Super Admin user already exists.");
             }

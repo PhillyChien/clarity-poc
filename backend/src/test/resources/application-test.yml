@@ -19,8 +19,9 @@ spring:
 
 # JWT configuration
 jwt:
-  secret: test_jwt_secret_key
   expiration-ms: 86400000  # 24 hours
+  # For tests, use a fixed KID
+  kid: test-key-id
 
 # Server configuration
 server:

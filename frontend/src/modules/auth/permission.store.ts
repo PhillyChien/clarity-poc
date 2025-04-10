@@ -64,7 +64,7 @@ interface PermissionState {
   hasAllPermissions: (permissions: Permission[]) => boolean;
 }
 
-export const usePermissionStore = create<PermissionState>()((set, get) => ({
+export const usePermissionStore = create<PermissionState>()((_, get) => ({
   hasPermission: (permission: Permission): boolean => {
     // Get current user role from role store
     const roleState = useRoleStore.getState();
