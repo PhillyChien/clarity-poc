@@ -3,12 +3,12 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/modules/auth";
+import type { UserResponse } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useUsersStore } from "@/store/users.store";
-import type { UserResponse } from "@/services/backend/types";
-import { Users, Settings } from "lucide-react";
+import { Settings, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { usePermission } from "@/modules/auth";
 import { UserManagementModal } from "./user-management-modal";
 
 interface UserListSidebarProps {
@@ -119,12 +119,12 @@ export function UserListSidebar({
 					</Button>
 				))}
 			</div>
-			
+
 			{/* User Management Modal */}
 			{canManageUsers && (
-				<UserManagementModal 
-					isOpen={isManagementModalOpen} 
-					onClose={() => setIsManagementModalOpen(false)} 
+				<UserManagementModal
+					isOpen={isManagementModalOpen}
+					onClose={() => setIsManagementModalOpen(false)}
 				/>
 			)}
 		</div>

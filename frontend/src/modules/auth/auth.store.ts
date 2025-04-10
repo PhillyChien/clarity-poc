@@ -2,13 +2,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../../services/backend";
 import type { User } from "../../services/backend/types";
-import { UserRole } from "./types";
+import type { UserRole } from "./types";
 
 // Forward declare role store to avoid circular dependency
 let setCurrentRole: ((role: UserRole | null) => void) | null = null;
 
 // Function to be called by role store to set its setCurrentRole function
-export const registerRoleStoreSetCurrentRole = (fn: (role: UserRole | null) => void) => {
+export const registerRoleStoreSetCurrentRole = (
+	fn: (role: UserRole | null) => void,
+) => {
 	setCurrentRole = fn;
 };
 
@@ -44,20 +46,20 @@ export const useAuthStore = create<AuthState>()(
 			login: async (username: string, password: string) => {
 				try {
 					set({ isLoading: true, error: null });
-					
+
 					// 先調用登錄接口
 					await authService.login({ username, password });
-					
+
 					// 再獲取用戶信息
 					const userInfo = await authService.getCurrentUser();
-					
+
 					set({
 						user: userInfo,
 						isAuthenticated: true,
 						isLoading: false,
-						error: null
+						error: null,
 					});
-					
+
 					// Update role in role store
 					if (setCurrentRole) {
 						setCurrentRole(userInfo.role as UserRole);
@@ -69,7 +71,7 @@ export const useAuthStore = create<AuthState>()(
 						isAuthenticated: false,
 						user: null,
 					});
-					
+
 					// Clear role in role store
 					if (setCurrentRole) {
 						setCurrentRole(null);
@@ -81,20 +83,20 @@ export const useAuthStore = create<AuthState>()(
 			register: async (username: string, email: string, password: string) => {
 				try {
 					set({ isLoading: true, error: null });
-					
+
 					// 先调用注册接口
 					await authService.register({ username, email, password });
-					
+
 					// 注册成功后获取用户信息
 					const userInfo = await authService.getCurrentUser();
-					
+
 					set({
 						user: userInfo,
 						isAuthenticated: true,
 						isLoading: false,
-						error: null
+						error: null,
 					});
-					
+
 					// Update role in role store
 					if (setCurrentRole) {
 						setCurrentRole(userInfo.role as UserRole);
@@ -102,11 +104,12 @@ export const useAuthStore = create<AuthState>()(
 				} catch (error) {
 					set({
 						isLoading: false,
-						error: error instanceof Error ? error.message : "Registration failed",
+						error:
+							error instanceof Error ? error.message : "Registration failed",
 						isAuthenticated: false,
 						user: null,
 					});
-					
+
 					// Clear role in role store
 					if (setCurrentRole) {
 						setCurrentRole(null);
@@ -127,44 +130,44 @@ export const useAuthStore = create<AuthState>()(
 						user: null,
 						error: null,
 					});
-					
+
 					// Clear role in role store
 					if (setCurrentRole) {
 						setCurrentRole(null);
 					}
 				}
 			},
-			
+
 			// Check authentication status
 			checkAuth: async () => {
 				try {
 					set({ isLoading: true });
 					// 通过 authService.getCurrentUser 接口获取当前用户信息
 					const userInfo = await authService.getCurrentUser();
-					
+
 					set({
 						user: userInfo,
 						isAuthenticated: true,
 						isLoading: false,
-						error: null
+						error: null,
 					});
-					
+
 					// Update role in role store
 					if (setCurrentRole) {
 						setCurrentRole(userInfo.role as UserRole);
 					}
 				} catch (error) {
 					// 不显示错误信息，因为这是自动检查
-					console.debug('Auth check failed:', error);
-					
+					console.debug("Auth check failed:", error);
+
 					// 如果未认证或发生错误，清空状态
 					set({
 						isAuthenticated: false,
 						user: null,
 						isLoading: false,
-						error: null // 不设置错误消息
+						error: null, // 不设置错误消息
 					});
-					
+
 					// Clear role in role store
 					if (setCurrentRole) {
 						setCurrentRole(null);
@@ -174,11 +177,11 @@ export const useAuthStore = create<AuthState>()(
 
 			// Set user
 			setUser: (user: User | null) => {
-				set({ 
+				set({
 					user,
 					isAuthenticated: !!user,
 				});
-				
+
 				// Update role in role store when user is updated
 				if (setCurrentRole) {
 					setCurrentRole(user?.role as UserRole | null);
@@ -212,7 +215,17 @@ export const getCurrentUser = (): User | null => {
 
 // Simple authentication hook
 export function useAuth() {
-	const { isAuthenticated, user, login, logout, register, checkAuth, isLoading, error, clearError } = useAuthStore();
+	const {
+		isAuthenticated,
+		user,
+		login,
+		logout,
+		register,
+		checkAuth,
+		isLoading,
+		error,
+		clearError,
+	} = useAuthStore();
 
 	return {
 		isAuthenticated,
@@ -223,6 +236,6 @@ export function useAuth() {
 		checkAuth,
 		isLoading,
 		error,
-		clearError
+		clearError,
 	};
-} 
+}

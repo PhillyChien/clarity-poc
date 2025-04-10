@@ -8,10 +8,10 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useAuth, usePermission } from "@/modules/auth";
 import type { Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useTodoStore } from "@/store/todo.store";
-import { usePermission, useAuth } from "@/modules/auth";
 import {
 	Ban,
 	CheckCircle,
@@ -39,7 +39,7 @@ export const TodoNode = memo(function TodoNode({
 	const { toggleTodoCompletion } = useTodoStore();
 	const { hasPermission } = usePermission();
 	const { user } = useAuth();
-	
+
 	// Check if current user is the owner of this todo
 	const isOwner = user?.id === todo.ownerId;
 

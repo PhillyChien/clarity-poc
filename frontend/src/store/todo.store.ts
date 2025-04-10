@@ -673,7 +673,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 			console.error("Error fetching user todos:", error);
 			set({
 				isLoading: false,
-				error: error instanceof Error ? error.message : "Failed to get user todos",
+				error:
+					error instanceof Error ? error.message : "Failed to get user todos",
 			});
 		}
 	},

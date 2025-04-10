@@ -20,7 +20,7 @@ export interface MeResponse {
 }
 
 // 用户对象
-export interface User extends Omit<MeResponse, 'type'> {
+export interface User extends Omit<MeResponse, "type"> {
 	id: number;
 	username: string;
 	email: string;

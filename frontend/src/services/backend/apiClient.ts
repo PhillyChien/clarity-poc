@@ -41,7 +41,7 @@ async function sendRequest<T>(
 	const requestOptions: RequestInit = {
 		method,
 		headers,
-		credentials: 'include',
+		credentials: "include",
 		...fetchOptions,
 	};
 

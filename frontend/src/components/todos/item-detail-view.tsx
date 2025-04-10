@@ -2,13 +2,13 @@
 
 import { TodoDetailForm } from "@/components/todos/todo-detail-form";
 import { Button } from "@/components/ui/button";
+import { useAuth, usePermission } from "@/modules/auth";
 import type { Folder, Todo, UpdateTodoRequest } from "@/services/backend/types";
 import { useTodoStore, useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
-import { Eye, Plus, Lock } from "lucide-react";
+import { Eye, Lock, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "../ui/badge";
-import { useAuth, usePermission } from "@/modules/auth";
 
 interface ItemDetailViewProps {
 	isViewingOtherUser?: boolean;
@@ -75,45 +75,47 @@ export function ItemDetailView({
 	// Check permissions based on the selected item
 	const isOwner = useMemo(() => {
 		if (!user || !currentItem) return false;
-		
-		if (selectedItemType === 'todo') {
+
+		if (selectedItemType === "todo") {
 			return (currentItem as Todo).ownerId === user.id;
 		}
-		
-		if (selectedItemType === 'folder') {
+
+		if (selectedItemType === "folder") {
 			return (currentItem as Folder).ownerId === user.id;
 		}
-		
+
 		return false;
 	}, [user, currentItem, selectedItemType]);
-	
+
 	// Permission checks with comprehensive permission evaluation
 	const canView = useMemo(() => {
 		if (!currentItem) return false;
-		
-		if (selectedItemType === 'todo') {
+
+		if (selectedItemType === "todo") {
 			return hasPermission(isOwner ? "todos.own.view" : "todos.others.view");
 		}
-		
-		if (selectedItemType === 'folder') {
-			return hasPermission(isOwner ? "folders.own.view" : "folders.others.view");
+
+		if (selectedItemType === "folder") {
+			return hasPermission(
+				isOwner ? "folders.own.view" : "folders.others.view",
+			);
 		}
-		
+
 		return false;
 	}, [currentItem, selectedItemType, isOwner, hasPermission]);
 
 	// Can edit only if owner and has permission
 	const canEdit = useMemo(() => {
 		if (!currentItem || !isOwner) return false;
-		
-		if (selectedItemType === 'todo') {
+
+		if (selectedItemType === "todo") {
 			return hasPermission("todos.own.edit");
 		}
-		
-		if (selectedItemType === 'folder') {
+
+		if (selectedItemType === "folder") {
 			return hasPermission("folders.own.edit");
 		}
-		
+
 		return false;
 	}, [currentItem, selectedItemType, isOwner, hasPermission]);
 
@@ -261,7 +263,9 @@ export function ItemDetailView({
 						{canEdit && (
 							<Button
 								variant="outline"
-								onClick={() => setViewMode(viewMode === "read" ? "edit" : "read")}
+								onClick={() =>
+									setViewMode(viewMode === "read" ? "edit" : "read")
+								}
 							>
 								{viewMode === "read" ? "Edit" : "View"}
 							</Button>

@@ -20,8 +20,7 @@ export function RegisterForm() {
 	const navigate = useNavigate();
 
 	// Get state and actions from auth store
-	const { register, isLoading, error, clearError, isAuthenticated } =
-		useAuth();
+	const { register, isLoading, error, clearError, isAuthenticated } = useAuth();
 
 	// Monitor authentication state and redirect when authenticated
 	useEffect(() => {

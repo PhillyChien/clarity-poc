@@ -15,7 +15,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, sidebar }: MainLayoutProps) {
 	const { isModerator, isAdmin } = useRole();
-	
+
 	return (
 		<div className="flex h-screen flex-col">
 			<header className="border-b bg-white">
@@ -33,7 +33,7 @@ export function MainLayout({ children, sidebar }: MainLayoutProps) {
 								Admin View
 							</Badge>
 						)}
-						
+
 						{/* Show moderator badge if user is a moderator */}
 						{isModerator() && (
 							<Badge

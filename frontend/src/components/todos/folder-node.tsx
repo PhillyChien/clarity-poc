@@ -16,10 +16,10 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useAuth, usePermission } from "@/modules/auth";
 import type { Folder as FolderType, Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
-import { usePermission, useAuth } from "@/modules/auth";
 import {
 	AlertTriangle,
 	ChevronDown,
@@ -29,7 +29,7 @@ import {
 	Plus,
 	Trash,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { TodoNode } from "./todo-node";
 
 interface FolderNodeProps {
@@ -88,13 +88,10 @@ export function FolderNode({
 	onToggleExpand,
 }: FolderNodeProps) {
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
-	const {
-		toggleExpandFolder,
-		setSelectedItem,
-	} = useTodoTreeStore();
+	const { toggleExpandFolder, setSelectedItem } = useTodoTreeStore();
 	const { deleteFolder } = useFolderStore();
 	const { openAddTodoModal } = useTodoTreeStore();
-	
+
 	// 使用权限系统
 	const { hasPermission } = usePermission();
 	const { user } = useAuth();
@@ -113,7 +110,7 @@ export function FolderNode({
 	// 根据权限判断是否为只读状态
 	// 如果是所有者，则不是只读；如果不是所有者，则是只读状态
 	const isReadOnly = !isOwner;
-	
+
 	const handleDeleteConfirm = () => {
 		// 只有文件夹存在、不是未分类文件夹、是所有者、且有权限时才能删除
 		if (!isUncategorized && folder && isOwner && canDeleteFolder) {
@@ -145,14 +142,14 @@ export function FolderNode({
 
 	const handleAddTodo = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		
+
 		if (isUncategorized) {
 			if (canCreateTodo && isOwner) {
 				openAddTodoModal(undefined, folder.name);
 			}
 			return;
 		}
-		
+
 		if (folder && canAddTodo) {
 			openAddTodoModal(folder.id, folder.name);
 		}
@@ -167,26 +164,24 @@ export function FolderNode({
 			if (isUncategorized) {
 				return (
 					<div className="pl-6 my-2">
-						<p className="text-sm text-muted-foreground">No Uncategorized Todos</p>
-					</div>	
-				);
-			} else {
-				return (
-					<div className="pl-6 my-2">
-						<p className="text-sm text-muted-foreground">Empty folder</p>
+						<p className="text-sm text-muted-foreground">
+							No Uncategorized Todos
+						</p>
 					</div>
 				);
 			}
+
+			return (
+				<div className="pl-6 my-2">
+					<p className="text-sm text-muted-foreground">Empty folder</p>
+				</div>
+			);
 		}
 
 		return (
 			<div className="pl-6 mt-1">
 				{todos.map((todo) => (
-					<TodoNode 
-						key={todo.id}
-						todo={todo}
-						isReadOnly={isReadOnly}
-					/>
+					<TodoNode key={todo.id} todo={todo} isReadOnly={isReadOnly} />
 				))}
 			</div>
 		);

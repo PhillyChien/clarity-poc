@@ -7,6 +7,13 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -14,18 +21,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { useUsersStore } from "@/store/users.store";
-import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { usePermission } from "@/modules/auth";
 import type { UserResponse } from "@/services/backend/types";
-import { cn } from "@/lib/utils";
+import { useUsersStore } from "@/store/users.store";
+import { useEffect, useState } from "react";
 
 interface UserManagementModalProps {
 	isOpen: boolean;
@@ -53,7 +53,7 @@ export function UserManagementModal({
 				<DialogHeader>
 					<DialogTitle>User Management</DialogTitle>
 				</DialogHeader>
-				
+
 				<div className="py-4 flex-1 overflow-y-auto">
 					{isLoading ? (
 						<p className="text-sm text-muted-foreground">Loading users...</p>
@@ -64,18 +64,28 @@ export function UserManagementModal({
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead className="sticky top-0 bg-white">User</TableHead>
-										<TableHead className="sticky top-0 bg-white">Email</TableHead>
-										<TableHead className="sticky top-0 bg-white">Role</TableHead>
+										<TableHead className="sticky top-0 bg-white">
+											User
+										</TableHead>
+										<TableHead className="sticky top-0 bg-white">
+											Email
+										</TableHead>
+										<TableHead className="sticky top-0 bg-white">
+											Role
+										</TableHead>
 										{canManageUsers && (
-											<TableHead className="sticky top-0 bg-white">Actions</TableHead>
+											<TableHead className="sticky top-0 bg-white">
+												Actions
+											</TableHead>
 										)}
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{users.map((user: UserResponse) => (
 										<TableRow key={user.id}>
-											<TableCell className="font-medium">{user.username}</TableCell>
+											<TableCell className="font-medium">
+												{user.username}
+											</TableCell>
 											<TableCell>{user.email}</TableCell>
 											<TableCell>
 												<RoleBadge role={user.role} />
@@ -111,14 +121,16 @@ function RoleBadge({ role }: { role: string }) {
 		NORMAL: "User",
 	};
 
-	const style = roleStyles[role as keyof typeof roleStyles] || "bg-gray-50 text-gray-700 border-gray-200";
+	const style =
+		roleStyles[role as keyof typeof roleStyles] ||
+		"bg-gray-50 text-gray-700 border-gray-200";
 	const displayName = roleNames[role as keyof typeof roleNames] || role;
 
 	return (
 		<span
 			className={cn(
 				"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border",
-				style
+				style,
 			)}
 		>
 			{displayName}
@@ -130,15 +142,15 @@ function RoleBadge({ role }: { role: string }) {
 function RoleSelector({ user }: { user: UserResponse }) {
 	const { updateUserRole } = useUsersStore();
 	const [isUpdating, setIsUpdating] = useState(false);
-	
+
 	// Don't allow changing SUPER_ADMIN roles or changing to SUPER_ADMIN
 	if (user.role === "SUPER_ADMIN") {
 		return <span className="text-sm text-muted-foreground">Cannot modify</span>;
 	}
-	
+
 	const handleRoleChange = async (value: string) => {
 		if (user.role === value) return;
-		
+
 		setIsUpdating(true);
 		try {
 			await updateUserRole(user.id, value);
@@ -164,4 +176,4 @@ function RoleSelector({ user }: { user: UserResponse }) {
 			</SelectContent>
 		</Select>
 	);
-} 
+}

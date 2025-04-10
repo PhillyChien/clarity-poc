@@ -1,5 +1,11 @@
 import { apiClient } from "./apiClient";
-import type { Folder, MessageResponse, RoleUpdateRequest, Todo, UserResponse } from "./types";
+import type {
+	Folder,
+	MessageResponse,
+	RoleUpdateRequest,
+	Todo,
+	UserResponse,
+} from "./types";
 
 /**
  * 用戶管理服務 - 負責與後端 API 交互進行用戶管理操作
@@ -57,7 +63,10 @@ export const usersService = {
 	 * @returns 包含操作結果消息的響應
 	 */
 	toggleTodoStatus: (todoId: number): Promise<MessageResponse> => {
-		return apiClient.put<MessageResponse>(`/todos/${todoId}/toggle-disabled`, {});
+		return apiClient.put<MessageResponse>(
+			`/todos/${todoId}/toggle-disabled`,
+			{},
+		);
 	},
 
 	/**
@@ -67,7 +76,10 @@ export const usersService = {
 	 * @returns 包含操作結果消息的響應
 	 */
 	disableTodo: (todoId: number): Promise<MessageResponse> => {
-		return apiClient.put<MessageResponse>(`/todos/${todoId}/toggle-disabled`, {});
+		return apiClient.put<MessageResponse>(
+			`/todos/${todoId}/toggle-disabled`,
+			{},
+		);
 	},
 
 	/**
@@ -77,6 +89,9 @@ export const usersService = {
 	 * @returns 包含操作結果消息的響應
 	 */
 	enableTodo: (todoId: number): Promise<MessageResponse> => {
-		return apiClient.put<MessageResponse>(`/todos/${todoId}/toggle-disabled`, {});
+		return apiClient.put<MessageResponse>(
+			`/todos/${todoId}/toggle-disabled`,
+			{},
+		);
 	},
-}; 
+};

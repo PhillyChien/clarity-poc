@@ -27,7 +27,7 @@
 		"paths": {
 			"@/*": ["./src/*"]
 		},
-		
+
 		/* Added for better module resolution */
 		"resolveJsonModule": true,
 		"allowSyntheticDefaultImports": true

@@ -3,9 +3,6 @@
 
 # Backend Java files
 backend/target/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
 backend/HELP.md
 backend/.classpath
 backend/.project

@@ -1,7 +1,7 @@
 "use client";
 
-import { usersService } from "@/services/backend/usersService";
 import type { MessageResponse, UserResponse } from "@/services/backend/types";
+import { usersService } from "@/services/backend/usersService";
 import { create } from "zustand";
 
 interface UsersState {
@@ -11,7 +11,10 @@ interface UsersState {
 
 	// Actions
 	fetchAllUsers: () => Promise<void>;
-	updateUserRole: (userId: number, role: string) => Promise<MessageResponse | undefined>;
+	updateUserRole: (
+		userId: number,
+		role: string,
+	) => Promise<MessageResponse | undefined>;
 	disableTodo: (todoId: number) => Promise<void>;
 	enableTodo: (todoId: number) => Promise<void>;
 	clearError: () => void;
@@ -42,14 +45,14 @@ export const useUsersStore = create<UsersState>((set) => ({
 			set({ isLoading: true, error: null });
 			const response = await usersService.updateUserRole(userId, role);
 			set({ isLoading: false });
-			
+
 			// 更新本地用户列表以反映角色变化
 			set((state) => ({
-				users: state.users.map((user) => 
-					user.id === userId ? { ...user, role } : user
-				)
+				users: state.users.map((user) =>
+					user.id === userId ? { ...user, role } : user,
+				),
 			}));
-			
+
 			return response;
 		} catch (error: unknown) {
 			set({

@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { folderService } from "../services/backend/folderService";
 import { usersService } from "../services/backend";
+import { folderService } from "../services/backend/folderService";
 import type {
 	CreateFolderRequest,
 	Folder,

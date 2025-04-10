@@ -1,7 +1,7 @@
 import { apiClient } from "./apiClient";
 import type {
-	MeResponse,
 	LoginRequest,
+	MeResponse,
 	MessageResponse,
 	RegisterRequest,
 } from "./types";
@@ -19,7 +19,7 @@ export const authService = {
 		// 登录并设置 HTTP-only Cookie，返回登录成功消息
 		return await apiClient.post<MessageResponse>("/auth/login", credentials, {
 			requiresAuth: false,
-			credentials: 'include', // 启用 Cookie
+			credentials: "include", // 启用 Cookie
 		});
 	},
 
@@ -30,8 +30,8 @@ export const authService = {
 	getCurrentUser: async (): Promise<MeResponse> => {
 		// 从 Cookie 获取用户信息
 		return await apiClient.get<MeResponse>("/auth/me", {
-			requiresAuth: false, 
-			credentials: 'include', // 启用 Cookie
+			requiresAuth: false,
+			credentials: "include", // 启用 Cookie
 		});
 	},
 
@@ -45,24 +45,28 @@ export const authService = {
 		await apiClient.post<MessageResponse>("/auth/register", registerData, {
 			requiresAuth: false,
 		});
-		
+
 		// 注册成功后自动登录
 		return await authService.login({
 			username: registerData.username,
-			password: registerData.password
+			password: registerData.password,
 		});
 	},
-	
+
 	/**
 	 * 登出用户
 	 */
 	logout: async (): Promise<void> => {
 		try {
-			await apiClient.post<MessageResponse>("/auth/logout", {}, {
-				credentials: 'include',
-			});
+			await apiClient.post<MessageResponse>(
+				"/auth/logout",
+				{},
+				{
+					credentials: "include",
+				},
+			);
 		} catch (error) {
 			console.error("Logout failed", error);
 		}
-	}
+	},
 };

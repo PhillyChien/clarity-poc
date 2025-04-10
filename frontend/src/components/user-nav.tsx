@@ -46,7 +46,9 @@ export function UserNav() {
 						<p className="text-sm font-medium">{user.username}</p>
 						<p className="text-xs text-muted-foreground">{user.email}</p>
 						{currentRole && (
-							<p className="text-xs text-muted-foreground">Role: {currentRole}</p>
+							<p className="text-xs text-muted-foreground">
+								Role: {currentRole}
+							</p>
 						)}
 					</div>
 				</DropdownMenuLabel>

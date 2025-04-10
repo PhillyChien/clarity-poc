@@ -17,8 +17,7 @@ export function LoginForm() {
 	const navigate = useNavigate();
 
 	// Get state and actions from auth store
-	const { login, isLoading, error, clearError, isAuthenticated } =
-		useAuth();
+	const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
 
 	// Monitor authentication state and redirect when authenticated
 	useEffect(() => {
