@@ -21,3 +21,9 @@ This directory contains the backend service based on Spring MVC, providing RESTf
 ## Run via Docker
 
 Run `docker-compose up --build -d` in the root directory
+
+## CI/CD Pipeline
+
+The backend application is configured to use GitHub Actions for CI/CD. The workflow is defined in `.github/workflows/backend-ci.yml`.
+
+

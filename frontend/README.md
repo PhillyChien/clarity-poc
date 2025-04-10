@@ -69,3 +69,9 @@ Follow these steps to set up and run the frontend application locally for develo
 * The development server usually supports Hot Module Replacement (HMR) for faster feedback during development.
 * Ensure the backend API URL configured in your `.env` file matches where your backend is actually running.
 * Refer to the Biome configuration (`biome.json`) for code linting and formatting standards. Run `pnpm check` and `pnpm check:fix` to check your code.
+
+## CI/CD Pipeline
+
+The frontend application is configured to use GitHub Actions for CI/CD. The workflow is defined in `.github/workflows/frontend-ci.yml`.
+
+
