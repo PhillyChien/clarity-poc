@@ -1,0 +1,7 @@
+# Ignore all files in the flyway directory except flyway.conf
+flyway/*
+!flyway/flyway.conf
+
+# Ignore flyway temp and log files
+.flyway*
+flyway.log

@@ -75,23 +75,6 @@ This project utilizes the following technologies across its components:
 * **User Management:** Registration, Login. Admin can view users and promote `Normal` users.
 * **Todo & Folder Management:** `Normal`/`Moderator` manage their own. `Moderator` can view all and disable Todos.
 
-### Database Migrations (Flyway - Backend)
-
-* The backend project uses Flyway for database schema migrations. SQL migration scripts are located in `src/main/resources/db/migration`.
-* Migration scripts follow a versioned naming convention: `V{version}__{description}.sql` (e.g., `V1__init_user_tables.sql`).
-* In development, Flyway migrations are configured to run automatically when the application starts.
-* You can manually execute migrations using the Maven Flyway plugin:
-  ```bash
-  # Navigate to the backend directory
-  cd backend
-  
-  # Execute Flyway migrations (environment-independent)
-  ./mvnw flyway:migrate
-  
-  # Specify the development environment explicitly (recommended)
-  ./mvnw flyway:migrate -Dspring.profiles.active=dev
-  ```
-
 ### Azure Clarity Integration (Frontend)
 
 * The Azure Clarity tracking script is embedded within the frontend application container.
