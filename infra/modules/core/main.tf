@@ -1,13 +1,7 @@
-# Main Terraform configuration
+# Core Infrastructure Module
 
 locals {
   resource_prefix = "${var.project_name}-${var.environment}"
-  
-  # 前端應用的環境設置
-  frontend_settings = var.frontend_app_settings
-  
-  # 後端應用的環境設置
-  backend_settings = var.backend_app_settings
 }
 
 # Resource Group
@@ -19,7 +13,7 @@ resource "azurerm_resource_group" "main" {
 
 # Networking
 module "networking" {
-  source          = "./modules/networking"
+  source          = "../networking"
   project_name    = var.project_name
   environment     = var.environment
   resource_group  = azurerm_resource_group.main.name
@@ -28,7 +22,7 @@ module "networking" {
 
 # Azure Container Registry
 module "container_registry" {
-  source          = "./modules/container_registry"
+  source          = "../container_registry"
   project_name    = var.project_name
   environment     = var.environment
   resource_group  = azurerm_resource_group.main.name
@@ -37,7 +31,7 @@ module "container_registry" {
 
 # Database
 module "postgresql" {
-  source                  = "./modules/database"
+  source                  = "../database"
   project_name            = var.project_name
   environment             = var.environment
   resource_group          = azurerm_resource_group.main.name
@@ -56,47 +50,6 @@ resource "azurerm_log_analytics_workspace" "main" {
   sku                 = "PerGB2018"
   retention_in_days   = 30
   tags                = var.tags
-}
-
-# App Services
-module "frontend_app_service" {
-  source                     = "./modules/compute"
-  project_name               = var.project_name
-  environment                = var.environment
-  resource_group             = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  app_name                   = "frontend"
-  app_services_subnet_id     = module.networking.app_services_subnet_id
-  container_registry_url     = "https://${module.container_registry.login_server}"
-  container_registry_username = module.container_registry.admin_username
-  container_registry_password = module.container_registry.admin_password
-  app_settings               = local.frontend_settings
-  enable_postgresql_identity = false
-}
-
-# 後端遷移到 Container App
-module "backend_container_app" {
-  source                     = "./modules/container_app"
-  project_name               = var.project_name
-  environment                = var.environment
-  resource_group             = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  app_name                   = "backend"
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
-  container_registry_url     = "https://${module.container_registry.login_server}"
-  container_registry_username = module.container_registry.admin_username
-  container_registry_password = module.container_registry.admin_password
-  app_settings               = local.backend_settings
-  enable_postgresql_identity = true
-  postgresql_server_id       = module.postgresql.server_id
-  infrastructure_subnet_id   = module.networking.container_apps_subnet_id
-  vnet_integration_enabled   = true
-  target_port                = 8080
-  cpu                        = "1.0"
-  memory                     = "2Gi"
-  min_replicas               = 1
-  max_replicas               = 5
-  external_enabled           = true
 }
 
 # Key Vault

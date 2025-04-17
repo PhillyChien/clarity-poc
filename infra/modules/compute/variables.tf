@@ -60,4 +60,10 @@ variable "postgresql_server_id" {
   description = "PostgreSQL 服務器的資源 ID，用於角色分配"
   type        = string
   default     = ""
+}
+
+variable "image_tag" {
+  description = "Container image tag to deploy"
+  type        = string
+  default     = "latest"
 } 

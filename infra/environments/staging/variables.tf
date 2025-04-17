@@ -55,3 +55,15 @@ variable "aad_admin_principal_name" {
   description = "The display name/principal name of the Azure AD user to be set as PostgreSQL administrator"
   type        = string
 }
+
+variable "backend_image_tag" {
+  description = "Container image tag for the backend application"
+  type        = string
+  default     = "latest"
+}
+
+variable "frontend_image_tag" {
+  description = "Container image tag for the frontend application"
+  type        = string
+  default     = "latest"
+}

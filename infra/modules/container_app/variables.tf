@@ -108,4 +108,10 @@ variable "vnet_integration_enabled" {
   description = "是否啟用 VNet 整合"
   type        = bool
   default     = false
+}
+
+variable "image_tag" {
+  description = "Container image tag to deploy"
+  type        = string
+  default     = "latest"
 } 
