@@ -18,18 +18,6 @@ variable "location" {
   type        = string
 }
 
-variable "database_subnet_id" {
-  description = "ID of the database subnet"
-  type        = string
-  default     = null
-}
-
-variable "virtual_network_id" {
-  description = "ID of the virtual network for PostgreSQL Flexible Server DNS zone link"
-  type        = string
-  default     = null
-} 
-
 variable "postgres_password" {
   description = "The administrator password for the PostgreSQL Flexible Server"
   type        = string
@@ -38,5 +26,15 @@ variable "postgres_password" {
 
 variable "postgres_allow_public_ip" {
   description = "The public IP address to allow access to the database"
+  type        = string
+}
+
+variable "aad_admin_object_id" {
+  description = "The Object ID of the Azure AD user to be set as PostgreSQL administrator"
+  type        = string
+}
+
+variable "aad_admin_principal_name" {
+  description = "The display name/principal name of the Azure AD user to be set as PostgreSQL administrator"
   type        = string
 }

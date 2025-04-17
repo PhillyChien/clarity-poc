@@ -2,6 +2,12 @@
 
 locals {
   resource_prefix = "${var.project_name}-${var.environment}"
+  
+  # 前端應用的環境設置
+  frontend_settings = var.frontend_app_settings
+  
+  # 後端應用的環境設置
+  backend_settings = var.backend_app_settings
 }
 
 # Resource Group
@@ -29,52 +35,17 @@ module "container_registry" {
   location        = azurerm_resource_group.main.location
 }
 
-# App Services
-module "frontend_app_service" {
-  source                     = "./modules/compute"
-  project_name               = var.project_name
-  environment                = var.environment
-  resource_group             = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  app_name                   = "frontend"
-  container_registry_url     = "https://${module.container_registry.login_server}"
-  container_registry_username = module.container_registry.admin_username
-  container_registry_password = module.container_registry.admin_password
-}
-
-module "backend_app_service" {
-  source                     = "./modules/compute"
-  project_name               = var.project_name
-  environment                = var.environment
-  resource_group             = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  app_name                   = "backend"
-  container_registry_url     = "https://${module.container_registry.login_server}"
-  container_registry_username = module.container_registry.admin_username
-  container_registry_password = module.container_registry.admin_password
-}
-
 # Database
 module "postgresql" {
-  source             = "./modules/database"
-  project_name       = var.project_name
-  environment        = var.environment
-  resource_group     = azurerm_resource_group.main.name
-  location           = azurerm_resource_group.main.location
-  database_subnet_id = module.networking.database_subnet_id
-  virtual_network_id = module.networking.vnet_id
-  postgres_password  = var.postgres_password
+  source                  = "./modules/database"
+  project_name            = var.project_name
+  environment             = var.environment
+  resource_group          = azurerm_resource_group.main.name
+  location                = azurerm_resource_group.main.location
+  postgres_password       = var.postgres_password
   postgres_allow_public_ip = var.postgres_allow_public_ip
-}
-
-# Key Vault
-resource "azurerm_key_vault" "main" {
-  name                = "${local.resource_prefix}-kv"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-  sku_name            = "standard"
-  tags                = var.tags
+  aad_admin_object_id     = var.aad_admin_object_id
+  aad_admin_principal_name = var.aad_admin_principal_name
 }
 
 # Log Analytics Workspace
@@ -84,6 +55,57 @@ resource "azurerm_log_analytics_workspace" "main" {
   resource_group_name = azurerm_resource_group.main.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
+  tags                = var.tags
+}
+
+# App Services
+module "frontend_app_service" {
+  source                     = "./modules/compute"
+  project_name               = var.project_name
+  environment                = var.environment
+  resource_group             = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  app_name                   = "frontend"
+  app_services_subnet_id     = module.networking.app_services_subnet_id
+  container_registry_url     = "https://${module.container_registry.login_server}"
+  container_registry_username = module.container_registry.admin_username
+  container_registry_password = module.container_registry.admin_password
+  app_settings               = local.frontend_settings
+  enable_postgresql_identity = false
+}
+
+# 後端遷移到 Container App
+module "backend_container_app" {
+  source                     = "./modules/container_app"
+  project_name               = var.project_name
+  environment                = var.environment
+  resource_group             = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  app_name                   = "backend"
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  container_registry_url     = "https://${module.container_registry.login_server}"
+  container_registry_username = module.container_registry.admin_username
+  container_registry_password = module.container_registry.admin_password
+  app_settings               = local.backend_settings
+  enable_postgresql_identity = true
+  postgresql_server_id       = module.postgresql.server_id
+  infrastructure_subnet_id   = module.networking.container_apps_subnet_id
+  vnet_integration_enabled   = true
+  target_port                = 8080
+  cpu                        = "1.0"
+  memory                     = "2Gi"
+  min_replicas               = 1
+  max_replicas               = 5
+  external_enabled           = true
+}
+
+# Key Vault
+resource "azurerm_key_vault" "main" {
+  name                = "${local.resource_prefix}-kv"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
   tags                = var.tags
 }
 

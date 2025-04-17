@@ -14,9 +14,14 @@ output "frontend_app_service_url" {
   value       = module.frontend_app_service.app_service_url
 }
 
-output "backend_app_service_url" {
-  description = "URL of the backend app service"
-  value       = module.backend_app_service.app_service_url
+output "backend_container_app_url" {
+  description = "URL of the backend container app"
+  value       = module.backend_container_app.container_app_url
+}
+
+output "backend_container_app_principal_id" {
+  description = "The principal ID of the backend container app"
+  value       = module.backend_container_app.principal_id
 }
 
 output "postgresql_server_fqdn" {

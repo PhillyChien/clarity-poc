@@ -8,9 +8,9 @@ output "app_services_subnet_id" {
   value       = azurerm_subnet.app_services.id
 }
 
-output "database_subnet_id" {
-  description = "ID of the database subnet"
-  value       = azurerm_subnet.database.id
+output "container_apps_subnet_id" {
+  description = "ID of the container apps subnet"
+  value       = azurerm_subnet.container_apps.id
 }
 
 output "network_security_group_id" {

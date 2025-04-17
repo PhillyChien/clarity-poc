@@ -3,7 +3,7 @@ resource "azurerm_service_plan" "app_plan" {
   resource_group_name = var.resource_group
   location            = var.location
   os_type             = "Linux"
-  sku_name            = "F1"
+  sku_name            = "B1"
 }
 
 resource "azurerm_linux_web_app" "app" {
@@ -24,11 +24,22 @@ resource "azurerm_linux_web_app" "app" {
     }
   }
 
-  app_settings = {
-    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
-  }
+  app_settings = var.app_settings
 
   identity {
     type = "SystemAssigned"
   }
+}
+
+resource "azurerm_app_service_virtual_network_swift_connection" "app_vnet_integration" {
+  app_service_id = azurerm_linux_web_app.app.id
+  subnet_id      = var.app_services_subnet_id
+}
+
+# 根據 enable_postgresql_identity 設置來添加 PostgreSQL 角色分配
+resource "azurerm_role_assignment" "postgres_identity" {
+  count                = var.enable_postgresql_identity ? 1 : 0
+  scope                = var.postgresql_server_id
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_linux_web_app.app.identity[0].principal_id
 } 

@@ -22,7 +22,16 @@ resource "azurerm_postgresql_flexible_server" "main" {
     start_minute = 0
   }
 
+  # Enable Azure AD authentication
+  authentication {
+    active_directory_auth_enabled = true
+    password_auth_enabled         = true
+    tenant_id                     = data.azurerm_client_config.current.tenant_id
+  }
+
 }
+
+data "azurerm_client_config" "current" {}
 
 resource "azurerm_postgresql_flexible_server_database" "main" {
   name      = "${var.project_name}db"
@@ -31,17 +40,11 @@ resource "azurerm_postgresql_flexible_server_database" "main" {
   collation = "en_US.utf8"
 }
 
-resource "azurerm_private_dns_zone" "main" {
-  name                = "${var.project_name}-${var.environment}.postgres.database.azure.com"
-  resource_group_name = var.resource_group
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "main" {
-  name                  = "${var.project_name}-${var.environment}-dns-link"
-  private_dns_zone_name = azurerm_private_dns_zone.main.name
-  resource_group_name   = var.resource_group
-  virtual_network_id    = var.virtual_network_id
-  registration_enabled  = false
+resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_azure_services" {
+  name             = "AllowAzureServices"
+  server_id        = azurerm_postgresql_flexible_server.main.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
 }
 
 resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_local_ip" {
@@ -49,4 +52,13 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_local_ip" {
   server_id        = azurerm_postgresql_flexible_server.main.id
   start_ip_address = var.postgres_allow_public_ip
   end_ip_address   = var.postgres_allow_public_ip
+}
+
+resource "azurerm_postgresql_flexible_server_active_directory_administrator" "admin" {
+  server_name         = azurerm_postgresql_flexible_server.main.name
+  resource_group_name = var.resource_group
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  object_id           = var.aad_admin_object_id
+  principal_name      = var.aad_admin_principal_name
+  principal_type      = "User"
 }

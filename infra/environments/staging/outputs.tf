@@ -13,9 +13,9 @@ output "frontend_app_service_url" {
   value       = module.clarity_infra.frontend_app_service_url
 }
 
-output "backend_app_service_url" {
-  description = "URL of the backend app service"
-  value       = module.clarity_infra.backend_app_service_url
+output "backend_container_app_url" {
+  description = "URL of the backend container app"
+  value       = module.clarity_infra.backend_container_app_url
 }
 
 output "postgresql_server_fqdn" {
