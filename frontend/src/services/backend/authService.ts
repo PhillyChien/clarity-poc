@@ -18,7 +18,6 @@ export const authService = {
 	login: async (credentials: LoginRequest): Promise<MessageResponse> => {
 		// 登录并设置 HTTP-only Cookie，返回登录成功消息
 		return await apiClient.post<MessageResponse>("/auth/login", credentials, {
-			requiresAuth: false,
 			credentials: "include", // 启用 Cookie
 		});
 	},
@@ -29,10 +28,7 @@ export const authService = {
 	 */
 	getCurrentUser: async (): Promise<MeResponse> => {
 		// 从 Cookie 获取用户信息
-		return await apiClient.get<MeResponse>("/auth/me", {
-			requiresAuth: false,
-			credentials: "include", // 启用 Cookie
-		});
+		return await apiClient.get<MeResponse>("/auth/me");
 	},
 
 	/**
@@ -42,9 +38,7 @@ export const authService = {
 	 */
 	register: async (registerData: RegisterRequest): Promise<MessageResponse> => {
 		// 注册用户
-		await apiClient.post<MessageResponse>("/auth/register", registerData, {
-			requiresAuth: false,
-		});
+		await apiClient.post<MessageResponse>("/auth/register", registerData);
 
 		// 注册成功后自动登录
 		return await authService.login({

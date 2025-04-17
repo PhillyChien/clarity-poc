@@ -1,5 +1,3 @@
-import { getAuthToken } from "@/modules/auth";
-
 // Read API base URL from environment variable
 const API_BASE_URL =
 	window._env_?.VITE_API_BASE_URL || "http://localhost:1234";
@@ -17,7 +15,7 @@ async function sendRequest<T>(
 	data?: unknown,
 	options: RequestOptions = {},
 ): Promise<T> {
-	const { requiresAuth = true, ...fetchOptions } = options;
+	const { ...fetchOptions } = options;
 
 	// Build full URL
 	const url = `${API_BASE_URL}${endpoint}`;
@@ -28,14 +26,6 @@ async function sendRequest<T>(
 		Accept: "application/json",
 		...((fetchOptions.headers as Record<string, string>) || {}),
 	};
-
-	// If requires authorization, add JWT token
-	if (requiresAuth) {
-		const token = getAuthToken();
-		if (token) {
-			headers.Authorization = `Bearer ${token}`;
-		}
-	}
 
 	// Configure request options
 	const requestOptions: RequestInit = {
