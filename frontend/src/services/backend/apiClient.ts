@@ -2,7 +2,7 @@ import { getAuthToken } from "@/modules/auth";
 
 // Read API base URL from environment variable
 const API_BASE_URL =
-	import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+	window._env_?.VITE_API_BASE_URL || "http://localhost:1234";
 
 interface RequestOptions extends RequestInit {
 	requiresAuth?: boolean;

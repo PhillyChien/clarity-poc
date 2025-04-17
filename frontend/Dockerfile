@@ -3,13 +3,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Accept build arguments
-ARG VITE_API_BASE_URL=http://localhost:8080
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-
 # Copy package files and install dependencies
 COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install -g pnpm && pnpm install --frozen-lockfile --prod=false
 
 # Copy source code
 COPY . .
@@ -18,13 +14,21 @@ COPY . .
 RUN pnpm build
 
 # Production stage with Nginx
-FROM nginx:alpine AS production
+FROM nginx:stable-alpine AS production
+
+# Copy the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+# Make it executable
+RUN chmod +x /entrypoint.sh
 
 # Copy custom nginx config
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
+# Define where Nginx serves files from
+ARG NGINX_ROOT_DIR=/usr/share/nginx/html
+
 # Copy built assets to nginx serve directory
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist ${NGINX_ROOT_DIR}
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
@@ -33,5 +37,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Expose port 80
 EXPOSE 80
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Use ENTRYPOINT to run the script, which will start Nginx
+ENTRYPOINT ["/entrypoint.sh"]
