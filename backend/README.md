@@ -1,6 +1,6 @@
 # Clarity POC - Backend
 
-This directory contains the backend service based on Spring MVC, providing RESTful APIs.
+This directory contain the backend service based on Spring MVC, providing RESTful APIs.
 
 ## Tech Stack
 
