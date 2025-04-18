@@ -54,6 +54,11 @@ output "key_vault_uri" {
   value       = azurerm_key_vault.main.vault_uri
 }
 
+output "key_vault_name" {
+  description = "The name of the Key Vault"
+  value       = azurerm_key_vault.main.name
+}
+
 output "storage_account_name" {
   description = "The name of the storage account"
   value       = azurerm_storage_account.main.name

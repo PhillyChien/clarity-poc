@@ -28,6 +28,11 @@ output "key_vault_uri" {
   value       = module.core.key_vault_uri
 }
 
+output "key_vault_name" {
+  description = "The name of the Key Vault"
+  value       = module.core.key_vault_name
+}
+
 output "storage_account_name" {
   description = "The name of the storage account"
   value       = module.core.storage_account_name

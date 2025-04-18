@@ -32,6 +32,8 @@ terraform apply core.tfplan
 
 - Build and push Docker images to ACR through GitHub Actions (You can use workflow_dispatch to trigger the deployment)
 
+- Setup JWT RSA Key in Key Vault (You can use scripts/store_jwt_key.sh to store the key pair in Key Vault)
+
 ## Part 2: Deploy Application Infrastructure
 
 ```bash

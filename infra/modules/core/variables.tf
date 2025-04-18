@@ -38,4 +38,15 @@ variable "aad_admin_object_id" {
 variable "aad_admin_principal_name" {
   description = "The display name/principal name of the Azure AD user to be set as PostgreSQL administrator"
   type        = string
+}
+
+variable "additional_access_policies" {
+  description = "Additional access policies for Key Vault"
+  type = list(object({
+    object_id               = string
+    secret_permissions      = list(string)
+    key_permissions         = list(string)
+    certificate_permissions = list(string)
+  }))
+  default = []
 } 
