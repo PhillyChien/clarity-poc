@@ -4,15 +4,42 @@ services:
     container_name: clarity-postgres-dev
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: clarity_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-clarity_db}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     networks:
       - clarity-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-clarity_db} -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  flyway: # --- Added Flyway Service ---
+    image: flyway/flyway:10.17.0
+    container_name: clarity-flyway-migration
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-clarity_db}
+      FLYWAY_USER: ${POSTGRES_USER:-postgres}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      # Mount your migration scripts to the location specified in flyway.conf
+      - ./db/migration:/flyway/sql:ro
+      # Mount your config file
+      - ./db/flyway/flyway.conf:/flyway/conf/flyway.conf:ro
+    # Command tells Flyway to use the config file and run migrate
+    command: ["-configFiles=/flyway/conf/flyway.conf", "migrate"]
+    networks:
+      - clarity-network
+    depends_on:
+      postgres:
+        # Wait for postgres to be healthy before running migrations
+        condition: service_healthy
 
 volumes:
   postgres_data_dev:
