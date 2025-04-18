@@ -4,13 +4,11 @@ spring:
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
-  
-  # 禁用 Azure Key Vault 自動配置
   cloud:
     azure:
       keyvault:
         secret:
-          enabled: false
+          property-source-enabled: false
   
   jpa:
     hibernate:

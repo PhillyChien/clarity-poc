@@ -4,13 +4,11 @@ spring:
     username: sa
     password: password
     driver-class-name: org.h2.Driver
-  
-  # 禁用 Azure Key Vault 自動配置
   cloud:
     azure:
       keyvault:
         secret:
-          enabled: false
+          property-source-enabled: false
   
   jpa:
     hibernate:
