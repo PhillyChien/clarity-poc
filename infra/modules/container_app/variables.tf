@@ -93,7 +93,12 @@ variable "enable_postgresql_identity" {
 }
 
 variable "postgresql_server_id" {
-  description = "PostgreSQL 服務器的資源 ID，用於角色分配"
+  description = "The ID of the PostgreSQL server. It's used for role assignment."
+  type        = string
+}
+
+variable "key_vault_id" {
+  description = "The ID of the Key Vault for storing secrets. It's used for role assignment."
   type        = string
   default     = ""
 }

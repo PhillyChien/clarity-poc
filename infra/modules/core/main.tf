@@ -60,6 +60,8 @@ resource "azurerm_key_vault" "main" {
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
   tags                = var.tags
+
+  enable_rbac_authorization = true
   
   # 添加當前執行 Terraform 的用戶的完整訪問權限
   access_policy {

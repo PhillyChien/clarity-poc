@@ -35,6 +35,7 @@ module "app" {
   container_registry_admin_username = module.core.container_registry_admin_username
   container_registry_admin_password = module.core.container_registry_admin_password
   postgresql_server_id              = module.core.postgresql_server_id
+  key_vault_id                      = module.core.key_vault_id
   frontend_app_settings             = var.frontend_app_settings
   backend_app_settings              = var.backend_app_settings
   backend_image_tag                 = var.backend_image_tag

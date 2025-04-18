@@ -54,6 +54,12 @@ variable "postgresql_server_id" {
   type        = string
 }
 
+variable "key_vault_id" {
+  description = "The ID of the Key Vault for storing secrets"
+  type        = string
+  default     = ""
+}
+
 variable "frontend_app_settings" {
   description = "Environment settings for the frontend App Service"
   type        = map(string)

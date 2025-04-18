@@ -40,6 +40,7 @@ module "backend_container_app" {
   app_settings               = local.backend_settings
   enable_postgresql_identity = true
   postgresql_server_id       = var.postgresql_server_id
+  key_vault_id               = var.key_vault_id
   infrastructure_subnet_id   = var.container_apps_subnet_id
   vnet_integration_enabled   = true
   target_port                = 8080

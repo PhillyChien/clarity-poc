@@ -58,10 +58,15 @@ resource "azurerm_container_app" "app" {
   }
 }
 
-# 為 PostgreSQL 分配 Contributor 角色（擁有完整存取權限）
 resource "azurerm_role_assignment" "postgres_identity" {
   count                = var.enable_postgresql_identity ? 1 : 0
   scope                = var.postgresql_server_id
   role_definition_name = "Contributor"
+  principal_id         = azurerm_container_app.app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "backend_kv_secrets_access" {
+  scope                = var.key_vault_id
+  role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azurerm_container_app.app.identity[0].principal_id
 }
