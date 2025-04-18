@@ -68,7 +68,7 @@ public class AuthController {
                 .secure(true)   // Use HTTPS in production
                 .path("/")
                 .maxAge(24 * 60 * 60) // 24 hours
-                .sameSite("Strict")   // Prevent CSRF
+                .sameSite("None")
                 .build();
         
         return ResponseEntity.ok()
@@ -138,7 +138,7 @@ public class AuthController {
                 .secure(true)
                 .path("/")
                 .maxAge(0) // Expired immediately
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         
         return ResponseEntity.ok()
