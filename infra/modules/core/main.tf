@@ -62,63 +62,12 @@ resource "azurerm_key_vault" "main" {
   tags                = var.tags
 
   enable_rbac_authorization = true
-  
-  # 添加當前執行 Terraform 的用戶的完整訪問權限
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
+}
 
-    secret_permissions = [
-      "Backup",
-      "Delete",
-      "Get",
-      "List",
-      "Purge",
-      "Recover",
-      "Restore",
-      "Set"
-    ]
-
-    key_permissions = [
-      "Backup",
-      "Create",
-      "Delete",
-      "Get",
-      "Import",
-      "List",
-      "Purge",
-      "Recover",
-      "Restore",
-      "Update"
-    ]
-
-    certificate_permissions = [
-      "Backup",
-      "Create",
-      "Delete",
-      "Get",
-      "Import",
-      "List",
-      "Purge",
-      "Recover",
-      "Restore",
-      "Update"
-    ]
-  }
-  
-  # 添加其他用戶的訪問策略
-  dynamic "access_policy" {
-    for_each = var.additional_access_policies
-    
-    content {
-      tenant_id = data.azurerm_client_config.current.tenant_id
-      object_id = access_policy.value.object_id
-      
-      secret_permissions      = access_policy.value.secret_permissions
-      key_permissions         = access_policy.value.key_permissions
-      certificate_permissions = access_policy.value.certificate_permissions
-    }
-  }
+resource "azurerm_role_assignment" "terraform_executor_kv_admin" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Administrator"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
 # Application Insights
