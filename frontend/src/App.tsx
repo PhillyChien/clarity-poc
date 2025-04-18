@@ -12,14 +12,17 @@ import {
 	useNavigate,
 } from "react-router";
 
-// 添加 AuthListener 組件，用於在全局範圍監聽身份驗證狀態變化
+import Clarity from "@microsoft/clarity";
+
+
+// Add AuthListener component to listen for authentication status changes globally
 function AuthListener() {
 	const { isAuthenticated } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
 
 	useEffect(() => {
-		// 如果用戶未登錄且不在登錄或注冊頁面，則重定向到登錄頁面
+		// If the user is not logged in and not on the login or registration page, redirect to the login page
 		if (
 			!isAuthenticated &&
 			!location.pathname.includes("/login") &&
@@ -33,6 +36,14 @@ function AuthListener() {
 }
 
 function App() {
+	useEffect(() => {
+		if (import.meta.env.PROD) {
+			console.log("Initializing Clarity");
+			Clarity.init("r66jd0jckz");
+		} else {
+			console.log("Not in production");
+		}
+	}, []);
 	return (
 		<>
 			<AuthListener />
