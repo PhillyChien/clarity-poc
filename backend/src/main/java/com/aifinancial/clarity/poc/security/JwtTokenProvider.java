@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -16,8 +17,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import jakarta.annotation.PostConstruct; // Import jakarta annotation
+import org.slf4j.Logger; // Optional: Add logging
+import org.slf4j.LoggerFactory; // Optional: Add logging
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.core.Authentication;
@@ -35,168 +39,209 @@ import io.jsonwebtoken.SignatureAlgorithm;
 
 @Component
 public class JwtTokenProvider {
+    private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     @Value("${jwt.expiration-ms}")
     private long jwtExpirationMs;
-    
-    @Value("${jwt.rsa.private-key:}")
-    private String rsaPrivateKeyString;
-    
-    @Value("${jwt.rsa.public-key:}")
-    private String rsaPublicKeyString;
-    
-    @Value("${jwt.rsa.private-key-file:}")
-    private String rsaPrivateKeyFile;
-    
-    @Value("${jwt.rsa.public-key-file:}")
-    private String rsaPublicKeyFile;
-    
-    @Value("${jwt.kid:}")
-    private String configuredKid;
+
+    // --- Properties for different loading strategies ---
+
+    // Strategy 1: File paths (Highest priority if set)
+    @Value("${jwt.rsa.private-key-file:}") // Read from application properties/env
+    private String configuredPrivateKeyFile;
+    @Value("${jwt.rsa.public-key-file:}") // Read from application properties/env
+    private String configuredPublicKeyFile;
+
+    // Strategy 2: Direct PEM content (e.g., from Key Vault)
+    @Value("${jwt-rsa-private-key:}") // Tries to resolve directly (e.g., KV)
+    private String keyVaultPrivateKeyPemContent;
+    @Value("${jwt-rsa-public-key:}") // Tries to resolve directly (e.g., KV)
+    private String keyVaultPublicKeyPemContent;
+
+    // Strategy 3: Direct Base64 strings (Lowest priority)
+    @Value("${jwt.rsa.private-key:}") // Read from application properties/env
+    private String base64PrivateKeyString; // Should be raw Base64, no PEM headers
+    @Value("${jwt.rsa.public-key:}") // Read from application properties/env
+    private String base64PublicKeyString; // Should be raw Base64, no PEM headers
+
+    // Key ID: Prioritize Key Vault, fallback to application property
+    @Value("${jwt-kid:}") // Tries to resolve directly (e.g., KV)
+    private String keyVaultKid;
+    @Value("${jwt.kid:}") // Read from application properties/env (fallback)
+    private String configuredKidFallback;
+
 
     private RSAPrivateKey rsaPrivateKey;
     private RSAPublicKey rsaPublicKey;
-    private String kid;
+    private String kid; // The final kid to use
 
-    private final ResourceLoader resourceLoader;
-    
+    private final ResourceLoader resourceLoader; // Needed again for file loading
+
+    // Constructor requires ResourceLoader again
     public JwtTokenProvider(ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
-        
-        // Initialize RSA keys
-        initializeRSAKeys();
     }
     
-    private void initializeRSAKeys() {
+    @PostConstruct
+    public void initializeRSAKeys() {
+        boolean keysInitialized = false;
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            boolean keysInitialized = false;
-            
-            // Check for environment variables first
-            String envPrivateKeyFile = System.getenv("JWT_RSA_PRIVATE_KEY_FILE");
-            String envPublicKeyFile = System.getenv("JWT_RSA_PUBLIC_KEY_FILE");
-            String envKid = System.getenv("JWT_KID");
-            
-            // If environment variables exist, use them instead of @Value injected values
-            if (envPrivateKeyFile != null && !envPrivateKeyFile.isEmpty()) {
-                rsaPrivateKeyFile = envPrivateKeyFile;
-            } else if (rsaPrivateKeyFile == null || rsaPrivateKeyFile.isEmpty()) {
-                // Default to classpath resource if not specified
-                rsaPrivateKeyFile = "classpath:keys/private_key.pem";
-            }
-            
-            if (envPublicKeyFile != null && !envPublicKeyFile.isEmpty()) {
-                rsaPublicKeyFile = envPublicKeyFile;
-            } else if (rsaPublicKeyFile == null || rsaPublicKeyFile.isEmpty()) {
-                // Default to classpath resource if not specified
-                rsaPublicKeyFile = "classpath:keys/public_key.pem";
-            }
-            
-            if (envKid != null && !envKid.isEmpty()) {
-                configuredKid = envKid;
-            } else if (configuredKid == null || configuredKid.isEmpty()) {
-                // Default KID if not specified
-                configuredKid = "646b2b4576e3e06abfcee95c8e7d19f2";
-            }
-            
-            // Try to load keys from PEM files
-            if (!keysInitialized && StringUtils.hasText(rsaPrivateKeyFile) && StringUtils.hasText(rsaPublicKeyFile)) {
+
+            // --- Priority 1: Try loading from specified files ---
+            if (StringUtils.hasText(configuredPrivateKeyFile) && StringUtils.hasText(configuredPublicKeyFile)) {
+                logger.info("Attempting to load RSA keys from specified files: private='{}', public='{}'", configuredPrivateKeyFile, configuredPublicKeyFile);
                 try {
-                    // Load private key from PEM file
-                    String privateKeyPem = readPemFile(rsaPrivateKeyFile);
-                    
-                    byte[] privateKeyBytes = pemToEncodedKey(privateKeyPem, true);
+                    String privateKeyPem = readPemFile(configuredPrivateKeyFile);
+                    String publicKeyPem = readPemFile(configuredPublicKeyFile);
+
+                    byte[] privateKeyBytes = pemToEncodedBytes(privateKeyPem, true);
                     PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
                     this.rsaPrivateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
-                    
-                    // Load public key from PEM file
-                    String publicKeyPem = readPemFile(rsaPublicKeyFile);
-                    
-                    byte[] publicKeyBytes = pemToEncodedKey(publicKeyPem, false);
+
+                    byte[] publicKeyBytes = pemToEncodedBytes(publicKeyPem, false);
                     X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
                     this.rsaPublicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
-                    
-                    // Use configured KID
-                    this.kid = configuredKid;
-                    
+
                     keysInitialized = true;
+                    logger.info("Successfully loaded RSA keys from files.");
                 } catch (Exception e) {
-                    // 失敗時繼續嘗試下一種方法
+                    logger.warn("Failed to load keys from specified files ('{}', '{}'). Reason: {}. Falling back to other methods.",
+                              configuredPrivateKeyFile, configuredPublicKeyFile, e.getMessage());
+                    // Log full trace for debugging if needed: logger.debug("File loading stack trace:", e);
                 }
             }
-            
-            // Try to load keys from Base64 strings
-            if (!keysInitialized && StringUtils.hasText(rsaPrivateKeyString) && StringUtils.hasText(rsaPublicKeyString)) {
+
+            // --- Priority 2: Try loading from direct PEM content (Key Vault) ---
+            if (!keysInitialized && StringUtils.hasText(keyVaultPrivateKeyPemContent) && StringUtils.hasText(keyVaultPublicKeyPemContent)) {
+                logger.info("Attempting to load RSA keys from direct PEM content (potentially Key Vault).");
                 try {
-                    // Load private key from Base64 encoded string
-                    byte[] privateKeyBytes = Base64.getDecoder().decode(rsaPrivateKeyString);
+                    // Assumes keyVaultPrivateKeyPemContent and keyVaultPublicKeyPemContent contain PEM formatted keys
+                    byte[] privateKeyBytes = pemToEncodedBytes(keyVaultPrivateKeyPemContent, true);
                     PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
                     this.rsaPrivateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
-                    
-                    // Load public key from Base64 encoded string
-                    byte[] publicKeyBytes = Base64.getDecoder().decode(rsaPublicKeyString);
+
+                    byte[] publicKeyBytes = pemToEncodedBytes(keyVaultPublicKeyPemContent, false);
                     X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
                     this.rsaPublicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
-                    
-                    // Use configured KID or generate a new one
-                    this.kid = configuredKid.isEmpty() ? UUID.randomUUID().toString() : configuredKid;
-                    
+
                     keysInitialized = true;
+                    logger.info("Successfully loaded RSA keys from direct PEM content.");
                 } catch (Exception e) {
-                    // 失敗時繼續
+                    logger.warn("Failed to load keys from direct PEM content. Reason: {}. Falling back to other methods.", e.getMessage());
+                    // Log full trace for debugging if needed: logger.debug("Direct PEM content loading stack trace:", e);
                 }
             }
-            
+
+            // --- Priority 3: Try loading from direct Base64 strings ---
+            if (!keysInitialized && StringUtils.hasText(base64PrivateKeyString) && StringUtils.hasText(base64PublicKeyString)) {
+                 logger.info("Attempting to load RSA keys from direct Base64 strings (jwt.rsa.private-key/public-key).");
+                 try {
+                     // Assumes base64PrivateKeyString/base64PublicKeyString are raw Base64, no PEM headers/footers
+                     byte[] privateKeyBytes = Base64.getDecoder().decode(base64PrivateKeyString);
+                     PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+                     this.rsaPrivateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
+
+                     byte[] publicKeyBytes = Base64.getDecoder().decode(base64PublicKeyString);
+                     X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+                     this.rsaPublicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
+
+                     keysInitialized = true;
+                     logger.info("Successfully loaded RSA keys from direct Base64 strings.");
+                 } catch (Exception e) {
+                     logger.warn("Failed to load keys from direct Base64 strings. Reason: {}.", e.getMessage());
+                     // Log full trace for debugging if needed: logger.debug("Base64 string loading stack trace:", e);
+                 }
+            }
+
+            // --- Final Check ---
             if (!keysInitialized) {
-                throw new RuntimeException("No RSA keys were configured. Please provide RSA keys through configuration.");
+                throw new RuntimeException("Failed to initialize RSA keys. No valid configuration found via files, direct content (Key Vault), or Base64 strings.");
             }
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize RSA keys: " + e.getMessage(), e);
+
+            // --- Initialize Key ID (KID) ---
+            if (StringUtils.hasText(keyVaultKid)) {
+                this.kid = keyVaultKid; // Prioritize Key Vault KID
+                logger.info("Using Key ID (kid) from direct injection (Key Vault): {}", this.kid);
+            } else if (StringUtils.hasText(configuredKidFallback)) {
+                this.kid = configuredKidFallback; // Fallback to application property
+                logger.info("Using Key ID (kid) from configuration property (jwt.kid): {}", this.kid);
+            } else {
+                logger.warn("No Key ID (kid) found from Key Vault ('jwt-kid') or configuration ('jwt.kid'). Consider setting one.");
+                // Decide: throw error or generate default? Let's throw for explicitness.
+                throw new IllegalArgumentException("Key ID (kid) is missing. Please configure 'jwt-kid' (Key Vault) or 'jwt.kid'.");
+            }
+
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Failed to get RSA KeyFactory instance: " + e.getMessage(), e);
+        } catch (Exception e) { // Catch any other unexpected initialization errors
+             logger.error("Unexpected error during RSA key initialization: {}", e.getMessage(), e);
+             throw new RuntimeException("Unexpected error during RSA key initialization: " + e.getMessage(), e);
         }
     }
-    
+
     /**
-     * Read a PEM format key file, supporting both classpath and file system resources
+     * Reads a PEM format key file, supporting both classpath and file system resources.
+     * (Restored from original logic)
      */
     private String readPemFile(String filePath) throws IOException {
-        try {
-            if (filePath.startsWith("classpath:")) {
-                // Handle classpath resources
-                String resourcePath = filePath.substring("classpath:".length());
-                Resource resource = new ClassPathResource(resourcePath);
-                byte[] keyBytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
-                return new String(keyBytes);
-            } else {
-                // Handle file system resources
-                return new String(Files.readAllBytes(Paths.get(filePath)));
+        logger.debug("Reading PEM file from path: {}", filePath);
+        Resource resource;
+        if (filePath.startsWith("classpath:")) {
+            // Handle classpath resources
+            String resourcePath = filePath.substring("classpath:".length());
+            resource = resourceLoader.getResource("classpath:" + resourcePath); // Use resourceLoader
+            if (!resource.exists()) {
+                throw new IOException("Classpath resource not found: " + resourcePath);
             }
+        } else {
+            // Handle file system resources using ResourceLoader for consistency (handles file:/ etc.)
+            resource = resourceLoader.getResource(filePath);
+             if (!resource.exists()) {
+                  // Fallback: try direct path interpretation if resource loader fails for simple paths
+                  try {
+                      return new String(Files.readAllBytes(Paths.get(filePath)));
+                  } catch (IOException fsEx) {
+                      throw new IOException("File system resource not found or failed to read: " + filePath, fsEx);
+                  }
+             }
+        }
+        try {
+             byte[] keyBytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
+             return new String(keyBytes);
         } catch (IOException e) {
-            throw new IOException("Failed to read key file: " + filePath, e);
+            throw new IOException("Failed to read key file resource: " + filePath, e);
         }
     }
-    
+
+
     /**
-     * Convert a PEM format key to binary encoding
-     * @param pemKey PEM format key
-     * @param isPrivate Whether it's a private key
-     * @return Encoded key byte array
+     * Converts a PEM format key string (including headers/footers) to binary encoded bytes.
+     * (Same as before)
      */
-    private byte[] pemToEncodedKey(String pemKey, boolean isPrivate) {
+    private byte[] pemToEncodedBytes(String pemKey, boolean isPrivate) {
         // Remove header and footer marker lines
         String beginMarker = isPrivate ? "-----BEGIN PRIVATE KEY-----" : "-----BEGIN PUBLIC KEY-----";
         String endMarker = isPrivate ? "-----END PRIVATE KEY-----" : "-----END PUBLIC KEY-----";
-        
-        // Remove marker lines and all whitespace
+
+        // Remove marker lines and all whitespace (including newlines within the base64 block)
         Pattern pattern = Pattern.compile("\\s+");
         String encodedKey = pemKey
                 .replace(beginMarker, "")
                 .replace(endMarker, "");
-        encodedKey = pattern.matcher(encodedKey).replaceAll("");
-        
-        // Decode Base64 string
-        return Base64.getDecoder().decode(encodedKey);
+        encodedKey = pattern.matcher(encodedKey).replaceAll(""); // Remove all whitespace
+
+        try {
+             // Decode Base64 string
+             return Base64.getDecoder().decode(encodedKey);
+        } catch (IllegalArgumentException e) {
+            logger.error("Failed to decode Base64 content for {} key. Content snippet: '{}'",
+                         isPrivate ? "private" : "public",
+                         encodedKey.substring(0, Math.min(encodedKey.length(), 50)) + "..."); // Log snippet
+            throw new IllegalArgumentException("Invalid Base64 format in PEM key content", e);
+        }
     }
+
 
     public String generateToken(Authentication authentication) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -291,12 +336,19 @@ public class JwtTokenProvider {
     }
     
     public JwksResponse getJwks() {
-        // Extract modulus (n) and exponent (e) from public key
-        String modulus = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(rsaPublicKey.getModulus().toByteArray());
-        String exponent = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(rsaPublicKey.getPublicExponent().toByteArray());
-        
+        if (this.rsaPublicKey == null || this.kid == null) {
+            logger.error("JWKS endpoint called before RSA public key or KID was initialized.");
+            return new JwksResponse();
+        }
+        byte[] modulusBytes = rsaPublicKey.getModulus().toByteArray();
+        byte[] exponentBytes = rsaPublicKey.getPublicExponent().toByteArray();
+        if (modulusBytes[0] == 0 && modulusBytes.length > 1) {
+            byte[] tmp = new byte[modulusBytes.length - 1];
+            System.arraycopy(modulusBytes, 1, tmp, 0, tmp.length);
+            modulusBytes = tmp;
+        }
+        String modulus = Base64.getUrlEncoder().withoutPadding().encodeToString(modulusBytes);
+        String exponent = Base64.getUrlEncoder().withoutPadding().encodeToString(exponentBytes);
         JwksKey key = new JwksKey();
         key.setKid(kid);
         key.setKty("RSA");
@@ -304,10 +356,8 @@ public class JwtTokenProvider {
         key.setUse("sig");
         key.setN(modulus);
         key.setE(exponent);
-        
         JwksResponse jwks = new JwksResponse();
         jwks.setKeys(java.util.Collections.singletonList(key));
-        
         return jwks;
     }
 } 

@@ -7,6 +7,15 @@ spring:
       credential:
         managed-identity-enabled: true
 
+  # Azure Key Vault configuration
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          property-sources:
+            - name: default
+              endpoint: ${AZURE_KEYVAULT_ENDPOINT}
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,12 +28,6 @@ spring:
 # JWT configuration
 jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
-  rsa:
-    private-key: ${JWT_RSA_PRIVATE_KEY:}
-    public-key: ${JWT_RSA_PUBLIC_KEY:}
-    private-key-file: ${JWT_RSA_PRIVATE_KEY_FILE:}
-    public-key-file: ${JWT_RSA_PUBLIC_KEY_FILE:}
-  kid: ${JWT_KID:}
 
 # Server configuration
 server:
@@ -41,7 +44,8 @@ logging:
     com.aifinancial.clarity.poc: INFO
     com.zaxxer.hikari: DEBUG
     com.azure.identity: DEBUG
-    com.azure.identity.extensions: DEBUG
+    spring.cloud.autoconfigure.jdbc: DEBUG
+    spring.cloud.autoconfigure.keyvault: DEBUG
     org.postgresql.jdbc: DEBUG
 
 # H2 Console (建議 staging 關閉，留著可手動切換)

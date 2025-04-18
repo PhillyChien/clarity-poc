@@ -5,6 +5,13 @@ spring:
     password: password
     driver-class-name: org.h2.Driver
   
+  # 禁用 Azure Key Vault 自動配置
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          enabled: false
+  
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -19,6 +26,9 @@ jwt:
   expiration-ms: 86400000  # 24 hours
   # For tests, use a fixed KID
   kid: test-key-id
+  rsa:
+    private-key-file: classpath:keys/private_key.pem
+    public-key-file: classpath:keys/public_key.pem
 
 # Server configuration
 server:
