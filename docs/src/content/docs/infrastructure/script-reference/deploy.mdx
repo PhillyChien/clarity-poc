@@ -1,10 +1,7 @@
-# Infrastructure Scripts
-
-This directory contains scripts for managing infrastructure and application configurations.
-
-## Deploy Infrastructure
-
-### `deploy.sh`
+---
+title: deploy.sh
+lastUpdated: 2025-04-18
+---
 
 This script is used to deploy infrastructure in stages, separating core infrastructure and application infrastructure.
 
@@ -45,38 +42,3 @@ This script is used to deploy infrastructure in stages, separating core infrastr
 1. Deploy core infrastructure (`./deploy.sh -s core -e <environment>`)
 2. Generate JWT keys and store them in Key Vault (`./store_jwt_key.sh -e <environment>`)
 3. Deploy application infrastructure (`./deploy.sh -s app -e <environment>`)
-
-## RSA Key Management
-
-### `store_jwt_key.sh`
-
-This script is used to generate RSA key pairs and store them in Azure Key Vault. It is typically run after deploying the core infrastructure and before deploying the application.
-
-**Features**:
-- Generate RSA 2048-bit key pairs
-- Generate a unique KID (Key ID)
-- Store private key, public key and KID in Key Vault
-- Automatically get Key Vault information from Terraform outputs or state files
-
-**Usage**:
-```bash
-./store_jwt_key.sh -e environment [-k keyvault_name] [-r resource_group]
-```
-
-**Parameters**:
-- `-e`: Environment name (dev, staging, production) - Required parameter
-- `-k`: Azure Key Vault name (if not provided, will try to get from Terraform)
-- `-r`: Resource group name (if not provided, will try to get from Terraform)
-- `-h`: Display help information
-
-**Examples**:
-```bash
-# Specify environment (required)
-./store_jwt_key.sh -e staging
-
-# Specify environment and Key Vault
-./store_jwt_key.sh -e production -k myclarity-prod-kv
-
-# Specify all parameters
-./store_jwt_key.sh -e dev -k myclarity-dev-kv -r myclarity-dev-rg
-```

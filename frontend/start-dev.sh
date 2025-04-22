@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Go to the project's root directory
+cd ..
+
 # Start development environment PostgreSQL using docker-compose
 echo "Starting development environment database..."
 docker-compose -f docker-compose.dev.yml up -d

@@ -12,11 +12,6 @@ CREATE TABLE users (
 -- Create index on username for faster lookups during authentication
 CREATE INDEX idx_users_username ON users(username);
 
--- Insert a super admin user with password 'admin123' (BCrypt hashed in real scenario)
--- This is handled by AdminInitializer using proper password encoding
--- INSERT INTO users (username, email, password, role)
--- VALUES ('admin', 'admin@example.com', '{noop}admin123', 'SUPER_ADMIN');
-
 -- Comment for documentation
 COMMENT ON TABLE users IS 'Stores user account information';
 COMMENT ON COLUMN users.id IS 'Primary key';

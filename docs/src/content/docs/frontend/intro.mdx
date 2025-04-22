@@ -1,0 +1,34 @@
+---
+title: Frontend Introduction
+description: Introduction to the Clarity POC Frontend.
+lastUpdated: 2025-04-18
+---
+
+## Introduction
+
+**Frontend** contains the React application for the this project. 
+It provides the user interface for interacting with the backend API, managing Todos and Folders, handling user authentication, and includes specific views for different user roles (Normal, Moderator, Super Admin). 
+Azure Clarity is integrated into this frontend to monitor user behavior.
+
+
+## Key technologies used
+
+* **Framework/Library:** React
+* **Language:** TypeScript
+* **State Management:** Zustand
+* **Routing:** React Router DOM
+* **Styling:** Tailwind CSS
+* **UI Components:** Shadcn/ui
+* **HTTP Client:** Fetch API (Native Browser API)
+* **Linting/Formatting:** Biome
+
+
+## Development Notes
+
+* The development server usually supports Hot Module Replacement (HMR) for faster feedback during development.
+* Ensure the backend API URL configured in your `.env` file matches where your backend is actually running.
+* Refer to the Biome configuration (`biome.json`) for code linting and formatting standards. Run `pnpm check` and `pnpm check:fix` to check your code.
+
+## CI/CD Pipeline
+
+The frontend application is configured to use GitHub Actions for CI/CD. The workflow is defined in `.github/workflows/frontend-ci.yml`.

@@ -1,0 +1,38 @@
+---
+title: v1__init_user_table.sql
+lastUpdated: 2025-04-18
+---
+
+
+### Purpose:
+
+To create the necessary database table and associated objects for storing user account information, which is fundamental for authentication and authorization within the application.
+
+### Changes Applied:
+
+1. Table Creation (`CREATE TABLE users`):
+    - Creates a new table named `users`.
+    - Defines the columns for storing user data:
+        - `id` (BIGSERIAL, PRIMARY KEY): A unique, auto-incrementing identifier for each user. This serves as the primary key.
+        - `username` (VARCHAR(50), NOT NULL, UNIQUE): The user's chosen login name. It must be unique across all users and cannot be empty. Limited to 50 characters.
+        - `email` (VARCHAR(100), NOT NULL, UNIQUE): The user's email address. It must be unique and cannot be empty. Limited to 100 characters. Used for communication and potentially account recovery.
+        - `password` (VARCHAR(255), NOT NULL): Stores the user's hashed password. It cannot be empty. The length allows for strong hashing algorithms (e.g., bcrypt). **Plain text passwords should never be stored.**
+        - `role` (VARCHAR(20), NOT NULL, DEFAULT 'NORMAL'): Represents the user's role within the application (e.g., 'NORMAL', 'ADMIN', 'MODERATOR'). Defaults to 'NORMAL' if not specified during insertion. Crucial for authorization logic.
+        - `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Records the exact time when the user account was created. Automatically set to the current timestamp upon insertion.
+        - `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Records the exact time when the user account was last modified. Automatically set upon insertion, and should be updated manually or via triggers upon subsequent updates.
+
+2. Index Creation (`CREATE INDEX idx_users_username`):
+    - Creates a non-unique index on the `username` column of the `users` table.
+    - **Purpose:** This significantly speeds up database lookups based on `username`, which is critical during the user login/authentication process where the application needs to find a user by their username quickly.
+
+3. Database Comments (`COMMENT ON ...`):
+    - Adds descriptive comments directly into the database schema for the `users` table and each of its columns.
+    - **Purpose:** These comments serve as embedded documentation, making the database schema easier to understand for developers or database administrators browsing the schema directly using database tools. They explain the intended use of the table and each field.
+
+### Dependencies:
+
+N/A
+
+### Impact:
+
+After this migration is successfully applied, the application's backend (specifically the user repository and authentication services) can interact with the `users` table to perform operations like user registration, login, and profile retrieval.

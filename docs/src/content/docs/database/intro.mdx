@@ -1,0 +1,65 @@
+---
+title: Database Development Setup
+description: Development Environment Setup for the Clarity POC Database.
+lastUpdated: 2025-04-18
+---
+
+The Clarity POC uses PostgreSQL as the database. The database is managed using Flyway for database migrations.
+
+
+## Migration
+
+### Flyway for local development
+
+The project uses Flyway to manage the database migrations. The Flyway command-line tool needs connection details for the database.
+
+You can configure this via a flyway config file 
+
+1. Create a `flyway.local.conf` file in the `db/flyway` directory. (recommended: place it in the `db/flyway` directory. It is already in the `.gitignore` file).
+
+```
+# flyway.local.conf
+flyway.url=jdbc:postgresql://localhost:5432/clarity_db
+flyway.user=postgres
+flyway.password=postgres
+flyway.driver=org.postgresql.Driver
+flyway.baselineOnMigrate=true
+flyway.locations=filesystem:db/migration
+flyway.cleanDisabled=false
+```
+
+### Flyway for production
+
+For Migration to the production database, you need to create a `flyway.<environment>.conf` file in the `db/flyway` directory, and use execute migration via the file.
+
+```
+# flyway.staging.conf
+flyway.url=<production-database-url>
+flyway.user=<production-database-user>
+flyway.password=<production-database-password>
+flyway.driver=org.postgresql.Driver
+flyway.baselineOnMigrate=true
+flyway.locations=filesystem:db/migration
+flyway.cleanDisabled=false
+```
+
+### Executing Database Migrations
+
+```bash
+# Navigate to the project root directory
+cd clarity-poc
+
+# Execute migrations (using the config file)
+flyway -configFiles=db/flyway/flyway.conf migrate
+
+# Check migration status
+flyway -configFiles=db/flyway/flyway.conf info
+
+# Clean the database (use with caution, development environment only)
+flyway -configFiles=db/flyway/flyway.conf clean
+```
+
+### Current Migration Scripts
+
+- `V1__init_user_tables.sql`: Initializes user tables
+- `V2__create_todo_folder_tables.sql`: Creates todo and folder tables

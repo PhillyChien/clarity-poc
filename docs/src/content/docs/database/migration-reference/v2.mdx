@@ -1,0 +1,59 @@
+---
+title: v2__create_todo_folder_tables.sql
+lastUpdated: 2025-04-18
+---
+
+This migration file builds upon the initial user setup by creating the core tables for managing folders and todo items.
+
+### Purpose:
+
+To establish the database structure required for organizing tasks (todos) optionally within folders, and linking both entities back to their respective owner (user).
+
+### Changes Applied:
+
+1. Table Creation (`CREATE TABLE folders`):
+    - Creates a table named `folders` to store organizational folder information.
+    - Columns:
+        - `id` (BIGSERIAL, PRIMARY KEY): Unique auto-incrementing identifier for the folder.
+        - `name` (VARCHAR(100), NOT NULL): The name of the folder, required.
+        - `description` (VARCHAR(255)): An optional longer description for the folder.
+        - `user_id` (BIGINT, NOT NULL): A foreign key referencing the `id` column in the `users` table. Indicates which user owns this folder. It cannot be null.
+        - `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of folder creation.
+        - `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of the last update.
+    - Constraints:
+        - `fk_folder_user`: Establishes a foreign key relationship between `folders.user_id` and `users.id`.
+        - `ON DELETE CASCADE`: If a user is deleted from the `users` table, all folders owned by that user will also be automatically deleted.
+
+2. Table Creation (`CREATE TABLE todos`):
+    - Creates a table named `todos` to store individual task items.
+    - Columns:
+        - `id` (BIGSERIAL, PRIMARY KEY): Unique auto-incrementing identifier for the todo item.
+        - `title` (VARCHAR(100), NOT NULL): The main title or summary of the todo, required.
+        - `description` (VARCHAR(1000)): An optional detailed description of the todo.
+        - `completed` (BOOLEAN, NOT NULL, DEFAULT FALSE): A flag indicating whether the todo task is marked as complete. Defaults to `FALSE`.
+        - `disabled` (BOOLEAN, NOT NULL, DEFAULT FALSE): A flag potentially used by moderators or admins to disable/hide a todo item without deleting it. Defaults to `FALSE`.
+        - `user_id` (BIGINT, NOT NULL): Foreign key referencing `users.id`. Indicates the owner of the todo. Cannot be null.
+        - `folder_id` (BIGINT): An optional foreign key referencing `folders.id`. Allows associating a todo with a specific folder. Can be null if the todo is not in any folder.
+        - `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of todo creation.
+        - `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of the last update.
+    - Constraints:
+        - `fk_todo_user`: Establishes a foreign key relationship between `todos.user_id` and `users.id`. `ON DELETE CASCADE` ensures todos are deleted if their owner user is deleted.
+        - `fk_todo_folder`: Establishes a foreign key relationship between `todos.folder_id` and `folders.id`. `ON DELETE CASCADE` ensures todos within a folder are deleted if the folder itself is deleted.
+
+3. Index Creation:
+    - `idx_folders_user_id` on `folders(user_id)`: Speeds up queries retrieving all folders for a specific user.
+    - `idx_todos_user_id` on `todos(user_id)`: Speeds up queries retrieving all todos for a specific user.
+    - `idx_todos_folder_id` on `todos(folder_id)`: Speeds up queries retrieving all todos within a specific folder.
+
+4. Database Comments (`COMMENT ON ...`):
+    - Adds descriptive comments to the `folders` and `todos` tables and their respective columns within the database schema, enhancing schema understandability.
+
+### Dependencies:
+
+- This migration **depends on** the successful application of `V1__init_user_tables.sql` (or whichever migration created the `users` table), because both `folders` and `todos` tables include foreign keys referencing `users.id`.
+
+### Impact:
+
+- Enables the core functionality of the application: creating, viewing, updating, and deleting folders and todo items.
+- Establishes the relationships between users, folders, and todos.
+- Provides necessary indexes for efficient querying based on user ownership and folder containment.

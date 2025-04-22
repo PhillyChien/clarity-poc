@@ -1,0 +1,64 @@
+---
+title: Getting Started
+description: Getting Started with the Clarity POC Frontend.
+lastUpdated: 2025-04-18
+---
+
+Follow these steps to set up and run the frontend application locally for development purposes.
+
+
+## Prerequisites
+
+* **Node.js:** An active LTS version is recommended (e.g., v18 or v20). Node.js includes `npm`, which is needed to install `pnpm`.
+* **PNPM:** The package manager used for frontend and docs dependencies. Install it globally via npm after installing Node.js: `npm install -g pnpm`.
+* **Backend:** The backend API service and PostgreSQL database **must be running**. For local development, this is typically achieved using the `start-dev.sh` script or the `docker-compose.dev.yml` file located in the **root** of the project repository, as described in the main project README. Ensure the backend is accessible (usually at `http://localhost:8080`).
+
+## Setup Frontend Development Environment
+
+Use the `start-dev.sh` script to start the development environment. 
+
+This will start the database and execute the Flyway migrations, then start the backend.
+
+```bash
+./start-dev.sh
+```
+
+## Run the Frontend Application in Development Mode
+
+Once you have the prerequisites ready, follow these steps to set up and run the frontend application locally for development purposes.
+
+1.  **Navigate to Frontend Directory:**
+    Open your terminal and change to the frontend directory:
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install Dependencies:**
+    Install the project dependencies using your chosen package manager:
+    ```bash
+    # Using pnpm
+    pnpm install
+    ```
+
+3.  **Configure Environment Variables:**
+    * Look for an `.env.example` file in the `frontend` directory.
+    * Copy it to create your own environment file:
+        ```bash
+        cp .env.example .env.local
+        ```
+    * Edit the `.env.local` file and ensure the variables are set correctly, especially the one pointing to your running backend API:
+        ```dotenv
+        # Example for Vite-based projects
+        VITE_API_BASE_URL=http://localhost:8080
+        ```
+
+4.  **Run the Development Server:**
+    Start the frontend development server:
+    ```bash
+    pnpm run dev
+    ```
+
+5.  **Access the Application:**
+    * The terminal output will indicate the local address where the frontend is being served. This is often:
+        * `http://localhost:5173` (common for Vite)
+    * Open this URL in your web browser. You should see the login or registration page.

@@ -1,0 +1,97 @@
+---
+title: Getting Started
+description: This guide provides detailed instructions for deploying the infrastructure in two separate parts.
+lastUpdated: 2025-04-18
+---
+
+This guide provides detailed instructions for deploying the infrastructure in two separate parts.
+
+## Prerequisites
+
+1. Install Terraform (v1.11.3 or later)
+2. Configure Azure credentials (Azure CLI or Service Principal)
+3. Navigate to the infrastructure directory: `cd infra`
+
+## Part 1: Deploy Core Infrastructure
+
+This part deploys all foundational infrastructure components:
+
+```bash
+# Navigate to the staging environment directory
+cd environments/staging
+
+# Initialize Terraform
+terraform init
+
+# Plan the deployment of core infrastructure
+terraform plan -target=module.core -out=core.tfplan
+
+# Review the plan then apply it
+terraform apply core.tfplan
+```
+
+## After Core Infrastructure is deployed
+
+- Setup GitHub Actions Secrets for ACR Deployment
+
+- Build and push Docker images to ACR through GitHub Actions (You can use workflow_dispatch to trigger the deployment)
+
+- Setup JWT RSA Key in Key Vault (You can use scripts/store_jwt_key.sh to store the key pair in Key Vault)
+
+## Part 2: Deploy Application Infrastructure
+
+```bash
+# Plan the deployment of application infrastructure
+terraform plan -target=module.app -out=app.tfplan
+
+# Review the plan then apply it
+terraform apply app.tfplan
+```
+
+## After Application Infrastructure is deployed
+
+- Setup Manged Identity for backend container app
+
+## Verification Steps
+
+1. After Core infrastructure deployment:
+   - Verify that the resource group is created
+   - Confirm database is accessible
+   - Check that container registry is ready
+
+2. After Application infrastructure deployment:
+   - Check that the frontend app is running
+   - Verify the backend container app is operational
+   - Test the connectivity between the frontend and backend
+
+## Using the Deployment Script
+
+A deployment script is provided to simplify the process:
+
+```bash
+# Deploy core infrastructure
+./scripts/deploy.sh core
+
+# Deploy application infrastructure
+./scripts/deploy.sh app
+```
+
+## Module Structure
+
+The infrastructure is organized into two main modules:
+
+1. **Core module** (`modules/core`):
+   - Contains all fundamental infrastructure resources
+   - Includes resource group, networking, database, etc.
+
+2. **Application module** (`modules/app`):
+   - Contains application-specific resources
+   - Includes frontend and backend applications
+
+This modular structure allows for clearer organization and easier maintenance.
+
+## Troubleshooting
+
+- If any service fails to deploy, check Azure portal for error details
+- For database connectivity issues, verify the firewall settings
+- For container app issues, check the container registry access permissions

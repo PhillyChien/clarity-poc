@@ -1,0 +1,43 @@
+---
+title: Roles & Permissions
+description: Explains the different user roles and their associated permissions within the application.
+lastUpdated: 2024-07-26
+---
+
+## Overview
+
+The application utilizes Role-Based Access Control (RBAC) to manage user capabilities. Access to specific API endpoints is granted based on the user's assigned role.
+
+*Note: This application currently uses roles directly for authorization checks (e.g., `hasRole('MODERATOR')`) rather than separate, fine-grained permission strings (e.g., `hasAuthority('UPDATE_USER')`).*
+
+## Defined Roles
+
+The POC defines the following roles in the `Role` enum (`backend/src/main/java/com/aifinancial/clarity/poc/model/Role.java`):
+
+- **`NORMAL`:**
+    - **Description:** Standard user account.
+    - **API Access:** Can access endpoints for managing their own profile, and perform all CRUD (Create, Read, Update, Delete) operations on their own Todos and Folders.
+
+- **`MODERATOR`:**
+    - **Description:** Users with elevated privileges for user oversight.
+    - **API Access:** Includes all `NORMAL` role access. Additionally, can access the endpoint to list all users (`/api/v1/users`).
+
+- **`SUPER_ADMIN`:**
+    - **Description:** Highest level of access, intended for system administrators.
+    - **API Access:** Includes all `MODERATOR` role access. Additionally, can access the endpoint to update any user's role (`/api/v1/users/{id}/role`). Has implicit access to all system functionalities defined by the available endpoints.
+
+## Permissions Summary
+
+| Feature / API Area             | `NORMAL` | `MODERATOR` | `SUPER_ADMIN` |
+| ------------------------------ | :------: | :---------: | :-----------: |
+| CRUD Own Todos                 |    ✅    |      ✅     |       ✅      |
+| CRUD Own Folders               |    ✅    |      ✅     |       ✅      |
+| List All Users                 |    ❌    |      ✅     |       ✅      |
+| Update User Role               |    ❌    |      ❌     |       ✅      |
+| Ban/Unban *Any* Todo           |    ❌    |      ✅     |       ✅      |
+
+## Business Value
+
+- **Security:** Ensures data privacy and integrity by restricting access based on user responsibilities.
+- **Operational Efficiency:** Allows administrators (`SUPER_ADMIN`) to delegate user viewing tasks to `MODERATOR` roles without granting full user management capabilities.
+- **Scalability:** Provides a structured way to manage access as the application grows in complexity and user base. 

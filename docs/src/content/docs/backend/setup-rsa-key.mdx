@@ -1,4 +1,8 @@
-# RSA Key Setup Guide
+---
+title: Setup RSA Key
+description: Setup RSA Key for the Clarity POC Backend.
+lastUpdated: 2025-04-18
+---
 
 This document explains how to generate RSA key pairs for JWT authentication and configure them in the system.
 
@@ -10,30 +14,11 @@ We use RSA key pairs to sign and verify JWT (JSON Web Tokens). This approach has
 2. **Separability**: Public keys can be safely shared with clients to verify tokens, while private keys remain only on the server
 3. **Consistency**: Using fixed keys ensures that tokens remain valid across service restarts
 
-## Generating RSA Key Pairs
-
-You can generate RSA key pairs using OpenSSL:
-
-1. Generate an RSA private key:
-   ```bash
-   openssl genrsa -out private_key.pem 2048
-   ```
-
-2. Extract the public key from the private key:
-   ```bash
-   openssl rsa -in private_key.pem -pubout -out public_key.pem
-   ```
-
-3. Generate a unique KID (Key ID):
-   ```bash
-   openssl rand -hex 16
-   ```
-
-## Configuring RSA Keys
+### Configuring RSA Keys
 
 There are two ways to configure RSA keys:
 
-### Method 1: Using PEM Format Key Files (Recommended)
+#### Method 1: Using PEM Format Key Files (Recommended)
 
 This is the simplest and most secure method, using standard PEM format key files:
 
@@ -54,7 +39,7 @@ This is the simplest and most secure method, using standard PEM format key files
      kid: "your-key-id"
    ```
 
-### Method 2: Using Environment Variables (Base64 Encoded)
+#### Method 2: Using Environment Variables (Base64 Encoded)
 
 Convert the PEM files to Base64 format and provide them through environment variables:
 
@@ -73,8 +58,8 @@ export JWT_KID="your-key-id"
 The system looks for key configurations in the following order:
 
 1. PEM file paths (`private-key-file` and `public-key-file`)
-2. Base64 encoded strings (`private-key` and `public-key`)
-3. If neither is configured, the system will generate temporary keys
+2. Azure Key Vault (only for production environment)
+3. Base64 encoded strings (`private-key` and `public-key`)
 
 ## Important Notes
 
@@ -104,3 +89,21 @@ For the development environment, RSA keys have already been set up:
    ```
 
 This setup allows you to start development without additional configuration. However, these keys should **never** be used in production environments. 
+
+## Production Environment Setup
+
+For the production environment, RSA keys are configured in Azure Key Vault. 
+
+1. **Key Vault Configuration**: We don't need to configure the Key Vault in `application.yml`, it will be automatically configured by the Spring Cloud Azure Key Vault Starter.
+However, we need to configure the keyvault endpoint in `application.yml`:
+
+```yaml
+spring:
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          property-sources:
+            - name: default
+              endpoint: ${AZURE_KEYVAULT_ENDPOINT}
+```

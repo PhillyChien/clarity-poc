@@ -1,0 +1,69 @@
+---
+title: Technology Stack
+description: Overview of the tech stack used in the Clarity POC.
+lastUpdated: 2025-04-18
+---
+
+This project leverages a combination of modern technologies across its components:
+
+- **Backend (`backend`):**
+    - Language: **Java** (Requires JDK 17 or higher)
+    - Framework: **Spring Boot 3**
+    - Security: **Spring Security** (JWT authentication with RSA256)
+    - Data Persistence: **Spring Data JPA** (using Hibernate)
+    - Database Interaction: **PostgreSQL** JDBC Driver
+    - Build & Dependency Management: **Maven**
+    - API Specification: **OpenAPI 3 (Springdoc)**
+    - Utilities: **Lombok** (reduce boilerplate code), **MapStruct** (DTO mapping)
+- **Frontend (`frontend`):**
+    - Framework/Library: **React**
+    - Language: **TypeScript**
+    - Build Tool: **Vite**
+    - Package Manager: **pnpm**
+    - State Management: **Zustand**
+    - Styling: **Tailwind CSS**
+    - UI Components: **shadcn/ui**
+    - HTTP Client: **Axios** (for API communication)
+    - Linting/Formatting: **ESLint**, **BiomeJS**
+- **Database (`db`):**
+    - Database System: **PostgreSQL**
+    - Schema Migrations: **Flyway**
+- **Infrastructure & Operations (`infra`):**
+    - Containerization: **Docker**, **Docker Compose**
+    - Scripting: **Bash** (for setup/deployment scripts)
+    - Secrets Management: Example using **Azure Key Vault** (for JWT keys)
+- **Documentation (`docs`):**
+    - Static Site Generator: **Astro**
+    - Documentation Theme: **Starlight**
+    - Package Manager: **pnpm**
+- **Testing:**
+    - Backend: **JUnit 5**, **Mockito**, **Spring Boot Test**, **Testcontainers** (likely for integration tests if configured)
+    - Frontend: (Specific libraries like **Vitest**, **React Testing Library** might be configured - check `package.json`)
+
+## Tools Prerequisites
+
+Ensure you have the following software installed on your system before proceeding:
+
+General:
+- **Git:** For version control.
+- **Docker & Docker Compose:** Essential for running the application stack (backend, database, etc.) in containers locally.
+- **(Recommended) IDEs:**
+    - **IntelliJ IDEA:** Highly recommended for backend (Java/Spring Boot) development, with excellent framework support.
+    * **Visual Studio Code (VS Code):** Excellent for frontend (React/TypeScript) and documentation (Astro/MDX) development.
+
+Infrastructure:
+- **Azure CLI:** Required for managing Azure resources.
+- **Terraform:** Required for managing infrastructure as code.
+
+Backend:
+- **JDK (Java Development Kit):** Version 17 or later is required for the backend.
+- **Maven:** For building the backend and managing Java dependencies.
+
+Frontend:
+- **Node.js:** An active LTS version is recommended (e.g., v18 or v20). Node.js includes `npm`, which is needed to install `pnpm`.
+- **pnpm:** The package manager used for frontend and docs dependencies. Install it globally via npm after installing Node.js: `npm install -g pnpm`.
+
+Database:
+- **Flyway Command-Line Tool:** Required for applying database schema migrations manually.
+
+

@@ -1,0 +1,21 @@
+---
+title: Backend Introduction
+description: Introduction to the Clarity POC Backend.
+lastUpdated: 2025-04-18
+---
+
+## Introduction
+
+**Backend** contains the Spring Boot application for this project. 
+It provides the RESTful APIs for the frontend to interact with, managing Todos and Folders, handling user authentication, and includes specific views for different user roles (Normal, Moderator, Super Admin). 
+Azure Clarity is integrated into this backend to monitor user behavior.
+
+## Tech Stack
+
+- Framework: Spring MVC (Java)
+- Security: Spring Security
+- Authentication: Basic username/password login/registration
+- Authorization: JWT (JSON Web Tokens)
+- Database: PostgreSQL
+- Database Migration: Flyway
+- Dependencies: Spring Data JPA, Lombok, Validation

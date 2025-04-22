@@ -1,0 +1,14 @@
+---
+title: Core Features
+description: Overview of the core features implemented in the Clarity POC.
+lastUpdated: 2025-04-18
+---
+
+The Clarity POC implements the following essential features:
+
+- **User Authentication:** Secure user registration (`/register`) and login (`/login`) mechanisms utilizing JSON Web Tokens (JWT) signed with RSA keys. Includes a public endpoint (`/.well-known/jwks.json`) for JWK Set retrieval.
+- **User Management:** Allows retrieval of user information (`/users/me`) and, for authorized roles (Admin/Moderator), listing all users and updating user roles.
+- **Role-Based Access Control (RBAC):** Implements distinct user roles (`ROLE_USER`, `ROLE_MODERATOR`, `ROLE_ADMIN`) with corresponding permissions enforced in the backend.
+- **Todo Management:** Provides full CRUD (Create, Read, Update, Delete) operations for managing individual tasks (Todos).
+- **Folder Management:** Offers full CRUD operations for creating and organizing content within folders.
+- **API Documentation:** Integrates OpenAPI (Swagger) for automatic generation and visualization of the backend REST API documentation.

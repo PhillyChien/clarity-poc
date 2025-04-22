@@ -1,0 +1,58 @@
+---
+title: Getting Started
+description: Getting Started with the Clarity POC Backend.
+lastUpdated: 2025-04-18
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+## Prerequisites
+
+* **JDK (Java Development Kit):** Version 17 or later is required for the backend.
+* **Maven:** For building the backend and managing Java dependencies.
+
+## Setup Backend Development Environment
+
+Use the `docker-compose.dev.yml` file to start the development environment. It will start the database and execute the Flyway migrations.
+
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+To stop and clean up the development environment, run the following command:
+
+```bash
+docker-compose -f docker-compose.dev.yml down -v
+```
+
+### JWT RSA Key Pair
+
+Normally the JWT RSA key pair has been generated and stored in the `backend/src/main/resources/keys` and `backend/src/test/resources/keys` directories. 
+
+If you want to generate a new key pair, please refer to the below,
+
+<LinkCard title="Setup RSA Key" href="/07-backend/003-setup-rsa-key" />
+
+## Run the Backend Application in Development Mode
+
+1. Navigate to the backend directory:
+
+```bash
+cd backend
+```
+
+2. Use the `./mvnw spring-boot:run -Dspring.profiles.active=dev` command to start the backend application in development mode. Note: The `application-dev.yml` file is already configured with the JWT RSA key pair.
+
+```bash
+./mvnw spring-boot:run -Dspring.profiles.active=dev
+```
+
+3. The backend will start on port 8080. You can access the Swagger UI at `http://localhost:8080/swagger-ui/index.html`.
+
+## Test the Backend Application
+
+Use the `./mvnw test` command to run the tests. Note: The `application-test.yml` file is already configured with the JWT RSA key pair.
+
+```bash
+./mvnw test -Dspring.profiles.active=test
+```
