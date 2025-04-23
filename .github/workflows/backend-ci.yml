@@ -34,4 +34,4 @@ jobs:
         run: ./mvnw -B clean package -DskipTests
 
       - name: Run tests
-        run: ./mvnw -B test 
+        run: ./mvnw -B test -Dspring.profiles.active=test
