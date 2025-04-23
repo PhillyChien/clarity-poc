@@ -1,0 +1,71 @@
+---
+title: V3__add_roles_permissions_postgres.sql
+description: Adds Role-Based Access Control (RBAC) tables (roles, permissions, role_permissions) and integrates them with the existing users table.
+lastUpdated: 2025-04-23
+---
+
+## Purpose
+
+This migration introduces a Role-Based Access Control (RBAC) system into the database. It defines distinct user roles and granular permissions, establishes the relationships between them, and links existing users to these roles. This is necessary to control user access to different features and data within the application, such as managing personal vs. others' todos and folders.
+
+## Changes Applied
+
+This migration applies the following changes:
+
+1.  **Table Creation (`roles`)**:
+    * Creates the `roles` table to store distinct user roles.
+    * Columns:
+        * `id` (BIGSERIAL, PRIMARY KEY): Unique identifier for the role, auto-incrementing.
+        * `name` (VARCHAR(50), NOT NULL, UNIQUE): The unique name of the role (e.g., `'NORMAL'`, `'MODERATOR'`).
+
+2.  **Table Creation (`permissions`)**:
+    * Creates the `permissions` table to store distinct permission strings.
+    * Columns:
+        * `id` (BIGSERIAL, PRIMARY KEY): Unique identifier for the permission, auto-incrementing.
+        * `name` (VARCHAR(100), NOT NULL, UNIQUE): The unique name of the permission (e.g., `'todos.own.view'`).
+
+3.  **Table Creation (`role_permissions`)**:
+    * Creates the `role_permissions` join table to map permissions to roles.
+    * Columns:
+        * `role_id` (BIGINT, NOT NULL): Foreign key referencing `roles.id`. Part of the composite primary key.
+        * `permission_id` (BIGINT, NOT NULL): Foreign key referencing `permissions.id`. Part of the composite primary key.
+    * Constraints:
+        * Composite PRIMARY KEY on (`role_id`, `permission_id`).
+        * `fk_role`: Foreign key constraint on `role_id` referencing `roles(id)` with `ON DELETE CASCADE`. If a role is deleted, its corresponding permission mappings are removed.
+        * `fk_permission`: Foreign key constraint on `permission_id` referencing `permissions(id)` with `ON DELETE CASCADE`. If a permission is deleted, its corresponding role mappings are removed.
+
+4.  **Table Alteration (`users`)**:
+    * **Column Addition**: Adds a `role_id` column (BIGINT, initially NULL) to the `users` table to link users to roles.
+    * **Constraint Addition**: Adds a foreign key constraint `fk_users_role_id` on `users.role_id` referencing `roles(id)` *after* the column is populated.
+    * **Column Modification**: Alters the `role_id` column to be `NOT NULL` *after* ensuring all users have a role assigned.
+    * **Column Deletion**: Drops the old `role` column (VARCHAR, assumed) `IF EXISTS`.
+
+5.  **Data Insertion**:
+    * **`roles`**: Inserts the initial roles: `'NORMAL'`, `'MODERATOR'`, `'SUPER_ADMIN'`. Uses `ON CONFLICT (name) DO NOTHING` for idempotency.
+    * **`permissions`**: Inserts a predefined set of permissions related to managing todos, folders, and users (e.g., `'todos.own.create'`, `'users.manage'`). Uses `ON CONFLICT (name) DO NOTHING` for idempotency.
+    * **`role_permissions`**: Populates the join table to grant specific sets of permissions to `'NORMAL'` and `'MODERATOR'` roles, and grants *all* defined permissions to the `'SUPER_ADMIN'` role. Uses `ON CONFLICT (role_id, permission_id) DO NOTHING` for idempotency.
+
+6.  **Data Update (`users`)**:
+    * Updates the newly added `users.role_id` based on the value in the old `role` column (if it exists and matches a name in the `roles` table).
+    * Assigns the `'NORMAL'` role ID to any user whose `role_id` remains NULL after the initial mapping attempt (acting as a default).
+
+## Dependencies
+
+This migration modifies the `users` table by adding a column, constraints, and updating data. Therefore, it depends on the successful application of the migration that initially created the `users` table (e.g., `V1__init_user_tables.sql` or equivalent).
+
+## Impact
+
+* **Functionality**: Enables the implementation of Role-Based Access Control in the application backend. Allows the application to check user permissions before granting access to specific actions or data.
+* **Existing Data**: Assigns a role to all existing users. Users whose old role matched `'NORMAL'`, `'MODERATOR'`, or `'SUPER_ADMIN'` (case-sensitive) will be mapped accordingly; others will default to `'NORMAL'`.
+* **Schema**: Adds three new tables (`roles`, `permissions`, `role_permissions`) and modifies the `users` table structure significantly (adds `role_id`, adds FK, makes `role_id` NOT NULL, drops old `role` column).
+* **Code Changes**: Requires corresponding backend code changes to utilize the new tables for permission checking. Any code relying on the old `users.role` column must be updated or removed.
+* **Performance**: May introduce a minor overhead on `INSERT`/`UPDATE` operations on the `users` table due to the new foreign key and `NOT NULL` constraint. Query performance for permission checks will depend heavily on the backend implementation and proper indexing (which is partially addressed by the PK/FK constraints).
+
+## (Optional) Rollback Considerations
+
+* Manual rollback is complex and not recommended. It would involve:
+    1.  Removing the `fk_users_role_id` constraint from `users`.
+    2.  Altering `users.role_id` back to NULLable (or dropping it).
+    3.  (Potentially) Re-adding the old `role` column and attempting to repopulate it (data might be lost).
+    4.  Dropping the `role_permissions`, `permissions`, and `roles` tables.
+* No dedicated rollback script is provided, adhering to the forward-fix approach often used with tools like Flyway.

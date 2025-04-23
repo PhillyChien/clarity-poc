@@ -1,38 +1,52 @@
 ---
-title: v1__init_user_table.sql
-lastUpdated: 2025-04-18
+title: V1__init_user_tables.sql
+description: Initializes the database schema by creating the essential `users` table for account management and authentication.
+lastUpdated: 2025-04-23
 ---
 
+## Purpose
 
-### Purpose:
+This is the initial database migration script. Its purpose is to create the foundational `users` table, which is essential for storing user account information, managing user registration, handling authentication (login), and forming the basis for associating other application data with specific users.
 
-To create the necessary database table and associated objects for storing user account information, which is fundamental for authentication and authorization within the application.
+## Changes Applied
 
-### Changes Applied:
+This migration applies the following DDL changes:
 
-1. Table Creation (`CREATE TABLE users`):
-    - Creates a new table named `users`.
-    - Defines the columns for storing user data:
-        - `id` (BIGSERIAL, PRIMARY KEY): A unique, auto-incrementing identifier for each user. This serves as the primary key.
-        - `username` (VARCHAR(50), NOT NULL, UNIQUE): The user's chosen login name. It must be unique across all users and cannot be empty. Limited to 50 characters.
-        - `email` (VARCHAR(100), NOT NULL, UNIQUE): The user's email address. It must be unique and cannot be empty. Limited to 100 characters. Used for communication and potentially account recovery.
-        - `password` (VARCHAR(255), NOT NULL): Stores the user's hashed password. It cannot be empty. The length allows for strong hashing algorithms (e.g., bcrypt). **Plain text passwords should never be stored.**
-        - `role` (VARCHAR(20), NOT NULL, DEFAULT 'NORMAL'): Represents the user's role within the application (e.g., 'NORMAL', 'ADMIN', 'MODERATOR'). Defaults to 'NORMAL' if not specified during insertion. Crucial for authorization logic.
-        - `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Records the exact time when the user account was created. Automatically set to the current timestamp upon insertion.
-        - `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Records the exact time when the user account was last modified. Automatically set upon insertion, and should be updated manually or via triggers upon subsequent updates.
+1.  **Table Creation (`users`)**:
+    * Creates the primary table named `users` to store all user account details.
+    * Columns:
+        * `id` (BIGSERIAL, PRIMARY KEY): Auto-incrementing unique identifier for each user.
+        * `username` (VARCHAR(50), NOT NULL, UNIQUE): The unique username chosen by the user for login.
+        * `email` (VARCHAR(100), NOT NULL, UNIQUE): The user's unique email address.
+        * `password` (VARCHAR(255), NOT NULL): Stores the user's hashed password.
+        * `role` (VARCHAR(20), NOT NULL, DEFAULT 'NORMAL'): Stores the user's role (e.g., 'NORMAL', 'MODERATOR'). *Note: This initial role implementation uses a simple VARCHAR column, which is later refined in V3*.
+        * `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp indicating when the user account was created.
+        * `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp indicating when the user account was last updated.
+    * Constraints:
+        * Ensures `username` and `email` are unique across all users.
 
-2. Index Creation (`CREATE INDEX idx_users_username`):
-    - Creates a non-unique index on the `username` column of the `users` table.
-    - **Purpose:** This significantly speeds up database lookups based on `username`, which is critical during the user login/authentication process where the application needs to find a user by their username quickly.
+2.  **Index Creation**:
+    * `idx_users_username` on `users(username)`: Creates an index on the `username` column to significantly speed up user lookups during the login/authentication process.
 
-3. Database Comments (`COMMENT ON ...`):
-    - Adds descriptive comments directly into the database schema for the `users` table and each of its columns.
-    - **Purpose:** These comments serve as embedded documentation, making the database schema easier to understand for developers or database administrators browsing the schema directly using database tools. They explain the intended use of the table and each field.
+3.  **Database Comments (`COMMENT ON ...`)**:
+    * Adds descriptive comments directly into the database schema for the `users` table and its columns, serving as embedded documentation.
 
-### Dependencies:
+## Dependencies
 
-N/A
+As the first migration (`V1`), this script typically has no dependencies on prior application migrations. It assumes the base database and necessary extensions (if any) are already set up.
 
-### Impact:
+## Impact
 
-After this migration is successfully applied, the application's backend (specifically the user repository and authentication services) can interact with the `users` table to perform operations like user registration, login, and profile retrieval.
+* **Functionality**: Enables the core user registration and login functionality within the application. Provides the necessary structure to store user credentials and basic profile data.
+* **Schema**: Establishes the central `users` table, which is expected to be referenced by many other tables created in subsequent migrations (via foreign keys like `user_id`).
+* **Data Integrity**: Unique constraints on `username` and `email` prevent duplicate accounts.
+* **Performance**: The index on `username` is crucial for efficient authentication performance as the user base grows.
+* **Code Changes**: Requires corresponding backend application code for handling user registration (including password hashing), user login (including password verification), and potentially retrieving user details.
+* **Foundation**: Creates the necessary `users` table and `id` column upon which `V2__create_todo_folder_tables.sql` and `V3__add_roles_permissions_postgres.sql` depend.
+
+## (Optional) Rollback Considerations
+
+* Manual rollback would involve dropping the created objects in reverse order:
+    1.  Drop the index: `idx_users_username`.
+    2.  Drop the table: `users`.
+* No dedicated rollback script is provided. Being the initial migration, rolling this back effectively means resetting the application's user data schema.

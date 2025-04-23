@@ -1,0 +1,94 @@
+---
+title: Auth Module
+description: Auth Module
+lastUpdated: 2025-04-23
+---
+
+
+# Auth Module
+
+This module handles all functionality related to user authentication, roles, and permissions within the frontend application.
+
+## Module Structure
+
+The `modules/auth` directory contains the following key files:
+
+-   **`auth.store.ts`**: Manages user authentication state using Zustand. This includes login, logout, registration, checking authentication status, and storing user information. It interacts with the backend `authService` and persists some state (like `user` and `isAuthenticated`) to local storage.
+-   **`role.store.ts`**: Manages the current user's role and permission list, also using Zustand. It provides methods for checking roles (`hasRole`, `isAdmin`, `isModerator`, `isUser`), comparing role hierarchy (`compareRoles`, `canAccessRoleLevel`), and checking permissions (`hasPermission`, `hasAnyPermission`, `hasAllPermissions`) based on the list provided by the backend.
+-   **`types.ts`**: Defines shared TypeScript types within the module, primarily `UserRole` (`NORMAL`, `MODERATOR`, `SUPER_ADMIN`).
+-   **`index.ts`**: Serves as the module's entry point, exporting functionalities from `auth.store`, `role.store`, and potentially `protected-route` components/functions.
+
+## Core Functionality
+
+### 1. Authentication (`auth.store.ts`)
+
+-   **State Management**: Uses the `useAuthStore` Zustand store to manage authentication-related state.
+    -   `isAuthenticated`: Boolean indicating if the user is logged in.
+    -   `user`: Object containing the current logged-in user's information, or `null` if not logged in.
+    -   `isLoading`: Boolean indicating if an authentication operation is in progress.
+    -   `error`: Stores error messages from authentication processes.
+-   **Key Actions**:
+    -   `login(username, password)`: Handles user login logic, calling the backend service and updating state.
+    -   `register(username, email, password)`: Handles user registration logic.
+    -   `logout()`: Handles user logout logic, clearing state and backend session/cookie.
+    -   `checkAuth()`: Checks the user's current authentication status (typically called on app load).
+    -   `setUser(user)`: Manually sets the user information.
+    -   `clearError()`: Clears the error state.
+-   **Persistence**: Persists `user` and `isAuthenticated` state to Local Storage to maintain login status across page refreshes.
+
+### 2. Roles & Permissions (`role.store.ts`)
+
+-   **State Management**: Uses the `useRoleStore` Zustand store to manage roles and permissions.
+    -   `currentRole`: The role of the current user (`UserRole` or `null`).
+    -   `currentPermissions`: A list of permissions the current user possesses (`Permission[]`).
+-   **Role Features**:
+    -   Defines a role hierarchy (`SUPER_ADMIN` > `MODERATOR` > `NORMAL`).
+    -   Provides `hasRole`, `isAdmin`, `isModerator`, `isUser` methods to check if the user has a specific role or identity.
+    -   Provides `compareRoles` and `canAccessRoleLevel` methods to compare the privilege levels of different roles.
+    -   Includes a `getRoleName` utility function to get a display-friendly name for a role.
+-   **Permission Features**:
+    -   Provides `hasPermission`, `hasAnyPermission`, `hasAllPermissions` methods to check if the user possesses specific, any, or all specified permissions.
+    -   Permission checks rely entirely on the `currentPermissions` list obtained from the backend upon login.
+
+## Design Considerations
+
+To avoid circular dependency issues between `auth.store.ts` and `role.store.ts`, a registration function pattern is used:
+
+1.  `auth.store.ts` defines `registerRoleStoreSetCurrentRole` and `registerRoleStoreSetCurrentPermissions` functions.
+2.  `role.store.ts` calls these functions during its initialization, registering its own `setCurrentRole` and `setCurrentPermissions` methods with the `auth.store`.
+3.  When state changes in `auth.store.ts` (e.g., login, logout, `checkAuth`), it can safely call the registered functions from `role.store.ts` to update role and permission state without needing to import `role.store` directly.
+
+## Usage Example
+
+Using the provided Hooks in a React component:
+
+```tsx
+import { useAuth, useRole } from './modules/auth'; // Assuming index.ts is at './modules/auth'
+
+function MyComponent() {
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { isAdmin, hasPermission, currentPermissions } = useRole();
+
+  if (authLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <div>Please log in.</div>;
+  }
+
+  console.log("Current User:", user);
+  console.log("Is Admin:", isAdmin());
+  console.log("Permissions:", currentPermissions);
+
+  return (
+    <div>
+      <p>Welcome, {user?.username}!</p>
+      {isAdmin() && <p>You have administrator privileges.</p>}
+      {hasPermission('manage_users') && (
+        <button>Manage Users</button>
+      )}
+    </div>
+  );
+}
+```

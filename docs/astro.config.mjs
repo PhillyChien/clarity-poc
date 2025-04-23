@@ -50,6 +50,10 @@ export default defineConfig({
 							label: 'Getting Started',
 							link: '/frontend/getting-started',
 						},
+						{
+							label: 'Auth Module',
+							link: '/frontend/auth-module',
+						},
 					],
 				},
 				{
@@ -112,6 +116,11 @@ export default defineConfig({
 							collapsed: true,
 							items: [
 								{
+									label: "How to write a migration reference",
+									link: "/database/migration-reference/how-to-write",
+									attrs: { style: 'font-style: italic; font-size: 12px;' },
+								},
+								{
 									label: "v1__init_user_table.sql",
 									link: "/database/migration-reference/v1",
 									attrs: { style: 'font-style: italic; font-size: 12px;' },
@@ -119,6 +128,11 @@ export default defineConfig({
 								{
 									label: "v2__create_todo_folder_tables.sql",
 									link: "/database/migration-reference/v2",
+									attrs: { style: 'font-style: italic; font-size: 12px;' },
+								},
+								{
+									label: "v3__add_roles_permissions.sql",
+									link: "/database/migration-reference/v3",
 									attrs: { style: 'font-style: italic; font-size: 12px;' },
 								},
 							],

@@ -1,0 +1,83 @@
+---
+title: How to write a migration
+description: How to write a migration
+lastUpdated: 2025-04-23
+---
+
+Consistent and clear documentation for database migrations is crucial for understanding the evolution of the database schema and troubleshooting potential issues. Each migration SQL file should have a corresponding Markdown or MDX file documenting its purpose and changes.
+
+## Standard Documentation Structure
+
+Each migration documentation file should ideally include the following sections:
+
+### 1. Header (YAML Front Matter)
+
+Include basic metadata:
+
+```plaintext
+---
+title: V[Number]__[Brief_Description].sql # e.g., V2__create_todo_folder_tables.sql
+description: A concise summary of the migration's purpose.
+lastUpdated: YYYY-MM-DD
+---
+```
+
+### 2. Purpose
+
+Goal: Briefly explain why this migration is needed. What business requirement, feature, or technical necessity does it address?
+Example: "To establish the database structure required for organizing tasks (todos) optionally within folders..."
+
+### 3. Changes Applied
+
+- Goal: Detail the specific DDL (Data Definition Language) or DML (Data Manipulation Language) changes made by the migration script. Be precise.
+- Structure: Use sub-sections for clarity (e.g., Table Creation, Table Alteration, Index Creation, Data Update).
+- Details for Table Changes:
+    - Specify the table name.
+    - List columns added, removed, or modified, including their data types, constraints (NOT NULL, DEFAULT, UNIQUE), and primary/foreign key definitions.
+    - Mention any specific constraint details like ON DELETE CASCADE or ON UPDATE SET NULL.
+
+- Details for Index Changes:
+    - Specify the index name and the table/column(s) it applies to.
+    - Briefly state the purpose of the index (e.g., "Speeds up queries retrieving...").
+
+- Details for Data Changes:
+    - Describe the data being inserted, updated, or deleted. Explain the criteria or scope of the data modification.
+
+- Example:
+    1. Table Creation (`CREATE TABLE folders`):
+        - Creates a table named `folders`...
+        - Columns:
+            - `id` (BIGSERIAL, PRIMARY KEY): ...
+            - `name` (VARCHAR(100), NOT NULL): ...
+            - `user_id` (BIGINT, NOT NULL): Foreign key referencing `users.id`...
+        - Constraints:
+            - `fk_folder_user`: Establishes... `ON DELETE CASCADE`.
+
+    2. Index Creation:
+        - `idx_folders_user_id` on `folders(user_id)`: Speeds up queries...
+
+    3. Database Comments (`COMMENT ON ...`):
+        - Adds descriptive comments to tables and columns...
+
+    4. Dependencies
+        - Goal: List any preceding migrations that must be applied successfully before this migration can run. This is crucial for understanding the execution order and potential failures.
+        - Specify: Mention the exact filename(s) of the required preceding migrations.
+        - Example: "This migration depends on the successful application of V1__init_user_tables.sql..."
+
+### 5. Impact
+
+- Goal: Describe the consequences of applying this migration.
+- Consider:
+    - What new functionality does it enable in the application?
+    - Does it affect existing functionality?
+    - Are there performance implications (positive or negative)?
+    - Does it require corresponding changes in the backend or frontend code?
+- Example:
+    - "Enables the core functionality of creating, viewing, updating, and deleting folders and todo items."
+    - "Establishes the relationships between users, folders, and todos."
+    - "Provides necessary indexes for efficient querying..."
+
+### 6. (Optional) Rollback Considerations
+
+- Goal: If applicable, describe how to manually revert the changes made by this migration or mention if a specific rollback script exists. Note that Flyway typically encourages forward fixes rather than rollbacks.
+- Example: "Manual rollback would involve dropping the todos and folders tables. No dedicated rollback script is provided."

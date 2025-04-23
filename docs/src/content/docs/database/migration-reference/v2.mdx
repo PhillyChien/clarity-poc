@@ -1,59 +1,68 @@
 ---
-title: v2__create_todo_folder_tables.sql
-lastUpdated: 2025-04-18
+title: V2__create_todo_folder_tables.sql
+description: Creates the `folders` and `todos` tables, establishing the core structure for task management and organization.
+lastUpdated: 2025-04-23
 ---
 
-This migration file builds upon the initial user setup by creating the core tables for managing folders and todo items.
+## Purpose
 
-### Purpose:
+This migration establishes the fundamental database structure required for the application's core task management features. It creates tables to store user-defined folders (`folders`) for organization and the individual task items (`todos`) themselves, allowing todos to be optionally grouped within these folders.
 
-To establish the database structure required for organizing tasks (todos) optionally within folders, and linking both entities back to their respective owner (user).
+## Changes Applied
 
-### Changes Applied:
+This migration applies the following DDL changes:
 
-1. Table Creation (`CREATE TABLE folders`):
-    - Creates a table named `folders` to store organizational folder information.
-    - Columns:
-        - `id` (BIGSERIAL, PRIMARY KEY): Unique auto-incrementing identifier for the folder.
-        - `name` (VARCHAR(100), NOT NULL): The name of the folder, required.
-        - `description` (VARCHAR(255)): An optional longer description for the folder.
-        - `user_id` (BIGINT, NOT NULL): A foreign key referencing the `id` column in the `users` table. Indicates which user owns this folder. It cannot be null.
-        - `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of folder creation.
-        - `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of the last update.
-    - Constraints:
-        - `fk_folder_user`: Establishes a foreign key relationship between `folders.user_id` and `users.id`.
-        - `ON DELETE CASCADE`: If a user is deleted from the `users` table, all folders owned by that user will also be automatically deleted.
+1.  **Table Creation (`folders`)**:
+    * Creates a table named `folders` to store folder information used for organizing todos.
+    * Columns:
+        * `id` (BIGSERIAL, PRIMARY KEY): Auto-incrementing unique identifier for the folder.
+        * `name` (VARCHAR(100), NOT NULL): The name of the folder.
+        * `description` (VARCHAR(255), NULL): An optional description for the folder.
+        * `user_id` (BIGINT, NOT NULL): Foreign key referencing the `users` table, indicating the owner.
+        * `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of creation.
+        * `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of the last update.
+    * Constraints:
+        * `fk_folder_user`: Foreign key on `user_id` referencing `users(id)`. Specifies `ON DELETE CASCADE`, meaning if a user is deleted, all their folders are automatically deleted.
 
-2. Table Creation (`CREATE TABLE todos`):
-    - Creates a table named `todos` to store individual task items.
-    - Columns:
-        - `id` (BIGSERIAL, PRIMARY KEY): Unique auto-incrementing identifier for the todo item.
-        - `title` (VARCHAR(100), NOT NULL): The main title or summary of the todo, required.
-        - `description` (VARCHAR(1000)): An optional detailed description of the todo.
-        - `completed` (BOOLEAN, NOT NULL, DEFAULT FALSE): A flag indicating whether the todo task is marked as complete. Defaults to `FALSE`.
-        - `disabled` (BOOLEAN, NOT NULL, DEFAULT FALSE): A flag potentially used by moderators or admins to disable/hide a todo item without deleting it. Defaults to `FALSE`.
-        - `user_id` (BIGINT, NOT NULL): Foreign key referencing `users.id`. Indicates the owner of the todo. Cannot be null.
-        - `folder_id` (BIGINT): An optional foreign key referencing `folders.id`. Allows associating a todo with a specific folder. Can be null if the todo is not in any folder.
-        - `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of todo creation.
-        - `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of the last update.
-    - Constraints:
-        - `fk_todo_user`: Establishes a foreign key relationship between `todos.user_id` and `users.id`. `ON DELETE CASCADE` ensures todos are deleted if their owner user is deleted.
-        - `fk_todo_folder`: Establishes a foreign key relationship between `todos.folder_id` and `folders.id`. `ON DELETE CASCADE` ensures todos within a folder are deleted if the folder itself is deleted.
+2.  **Table Creation (`todos`)**:
+    * Creates a table named `todos` to store individual todo items.
+    * Columns:
+        * `id` (BIGSERIAL, PRIMARY KEY): Auto-incrementing unique identifier for the todo.
+        * `title` (VARCHAR(100), NOT NULL): The title or main text of the todo item.
+        * `description` (VARCHAR(1000), NULL): An optional longer description for the todo.
+        * `completed` (BOOLEAN, NOT NULL, DEFAULT FALSE): Flag indicating if the todo is marked as done.
+        * `disabled` (BOOLEAN, NOT NULL, DEFAULT FALSE): Flag indicating if the todo has been disabled (e.g., by a moderator).
+        * `user_id` (BIGINT, NOT NULL): Foreign key referencing the `users` table, indicating the owner.
+        * `folder_id` (BIGINT, NULL): Optional foreign key referencing the `folders` table, linking the todo to a folder.
+        * `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of creation.
+        * `updated_at` (TIMESTAMP WITH TIME ZONE, DEFAULT CURRENT_TIMESTAMP): Timestamp of the last update.
+    * Constraints:
+        * `fk_todo_user`: Foreign key on `user_id` referencing `users(id)`. Specifies `ON DELETE CASCADE`, meaning if a user is deleted, all their todos are automatically deleted.
+        * `fk_todo_folder`: Foreign key on `folder_id` referencing `folders(id)`. Specifies `ON DELETE CASCADE`, meaning if a folder is deleted, all todos within that folder are automatically deleted.
 
-3. Index Creation:
-    - `idx_folders_user_id` on `folders(user_id)`: Speeds up queries retrieving all folders for a specific user.
-    - `idx_todos_user_id` on `todos(user_id)`: Speeds up queries retrieving all todos for a specific user.
-    - `idx_todos_folder_id` on `todos(folder_id)`: Speeds up queries retrieving all todos within a specific folder.
+3.  **Index Creation**:
+    * `idx_folders_user_id` on `folders(user_id)`: Speeds up queries retrieving folders belonging to a specific user.
+    * `idx_todos_user_id` on `todos(user_id)`: Speeds up queries retrieving todos belonging to a specific user.
+    * `idx_todos_folder_id` on `todos(folder_id)`: Speeds up queries retrieving todos within a specific folder (including those not in any folder, where `folder_id` IS NULL).
 
-4. Database Comments (`COMMENT ON ...`):
-    - Adds descriptive comments to the `folders` and `todos` tables and their respective columns within the database schema, enhancing schema understandability.
+4.  **Database Comments (`COMMENT ON ...`)**:
+    * Adds descriptive comments directly into the database schema for the `folders` and `todos` tables and their respective columns. These comments serve as embedded documentation for database administrators or developers inspecting the schema directly.
 
-### Dependencies:
+## Dependencies
 
-- This migration **depends on** the successful application of `V1__init_user_tables.sql` (or whichever migration created the `users` table), because both `folders` and `todos` tables include foreign keys referencing `users.id`.
+This migration creates tables (`folders`, `todos`) that have foreign key dependencies on the `users` table. Therefore, it depends on the successful application of the migration that created the `users` table (e.g., `V1__init_user_tables.sql` or equivalent).
 
-### Impact:
+## Impact
 
-- Enables the core functionality of the application: creating, viewing, updating, and deleting folders and todo items.
-- Establishes the relationships between users, folders, and todos.
-- Provides necessary indexes for efficient querying based on user ownership and folder containment.
+* **Functionality**: Enables the core application functionality related to creating, reading, updating, deleting, and organizing todo items within folders.
+* **Relationships**: Establishes the primary data relationships: users own folders and todos; todos can optionally belong to a folder. The `ON DELETE CASCADE` rules define automatic cleanup behavior when users or folders are deleted.
+* **Performance**: Introduces indexes on foreign key columns (`user_id`, `folder_id`) to ensure efficient retrieval of tasks and folders based on user ownership and folder grouping.
+* **Schema**: Adds two major tables (`folders`, `todos`) and associated indexes/constraints to the database.
+* **Code Changes**: Requires corresponding backend application code to interact with these new tables (e.g., repository/service layers for folders and todos).
+
+## (Optional) Rollback Considerations
+
+* Manual rollback would require dropping the created objects in reverse order of dependency:
+    1.  Drop indexes: `idx_todos_folder_id`, `idx_todos_user_id`, `idx_folders_user_id`.
+    2.  Drop tables: `todos`, then `folders`.
+* No dedicated rollback script is provided, following the forward-fix approach.
