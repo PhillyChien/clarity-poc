@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aifinancial.clarity.poc.constant.PermissionConstants;
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.service.FolderService;
@@ -40,9 +41,9 @@ public class FolderController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get folders", 
-               description = "Retrieves folders based on query parameters. If userId is provided and the user has proper permissions, returns folders for that user. Otherwise returns current user's folders.")
+               description = "Retrieves folders. Returns current user's folders unless specific userId is provided (requires permissions).")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Folders retrieved successfully",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = FolderResponse.class)))),
@@ -63,9 +64,9 @@ public class FolderController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a folder by ID", 
-               description = "Retrieves a specific folder by its ID")
+               description = "Retrieves a specific folder by its ID (if user has access)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Folder retrieved successfully",
                     content = @Content(schema = @Schema(implementation = FolderResponse.class))),
@@ -80,9 +81,9 @@ public class FolderController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.FOLDERS_OWN_CREATE + "')")
     @Operation(summary = "Create a new folder", 
-               description = "Creates a new folder for the current user")
+               description = "Creates a new folder for the current user. Requires 'folders.own.create' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Folder created successfully",
                     content = @Content(schema = @Schema(implementation = FolderResponse.class))),
@@ -97,9 +98,9 @@ public class FolderController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.FOLDERS_OWN_EDIT + "')")
     @Operation(summary = "Update a folder", 
-               description = "Updates an existing folder")
+               description = "Updates an existing folder owned by the current user. Requires 'folders.own.edit' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Folder updated successfully",
                     content = @Content(schema = @Schema(implementation = FolderResponse.class))),
@@ -117,9 +118,9 @@ public class FolderController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.FOLDERS_OWN_DELETE + "')")
     @Operation(summary = "Delete a folder", 
-               description = "Deletes a folder by its ID")
+               description = "Deletes a folder owned by the current user. Requires 'folders.own.delete' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Folder deleted successfully"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Login required"),

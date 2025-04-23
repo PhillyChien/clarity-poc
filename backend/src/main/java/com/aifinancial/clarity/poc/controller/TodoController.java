@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aifinancial.clarity.poc.constant.PermissionConstants;
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
 import com.aifinancial.clarity.poc.dto.response.ErrorResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
@@ -43,9 +44,9 @@ public class TodoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get todos", 
-               description = "Retrieves todos based on query parameters. If userId is provided and the user has proper permissions, returns todos for that user. Otherwise returns current user's todos.")
+               description = "Retrieves todos. Returns current user's todos unless specific userId is provided (requires permissions).")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todos retrieved successfully",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = TodoResponse.class)))),
@@ -66,9 +67,9 @@ public class TodoController {
     }
 
     @GetMapping("/folder/{folderId}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get todos by folder", 
-               description = "Retrieves all todos within a specific folder")
+               description = "Retrieves all todos within a specific folder (if user has access)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todos retrieved successfully",
                     content = @Content(schema = @Schema(implementation = TodoResponse.class))),
@@ -83,9 +84,9 @@ public class TodoController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a todo by ID", 
-               description = "Retrieves a specific todo by its ID")
+               description = "Retrieves a specific todo by its ID (if user has access)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todo retrieved successfully",
                     content = @Content(schema = @Schema(implementation = TodoResponse.class))),
@@ -100,9 +101,9 @@ public class TodoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.TODOS_OWN_CREATE + "')")
     @Operation(summary = "Create a new todo", 
-               description = "Creates a new todo for the current user")
+               description = "Creates a new todo for the current user. Requires 'todos.own.create' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todo created successfully",
                     content = @Content(schema = @Schema(implementation = TodoResponse.class))),
@@ -117,9 +118,9 @@ public class TodoController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.TODOS_OWN_EDIT + "')")
     @Operation(summary = "Update a todo", 
-               description = "Updates an existing todo")
+               description = "Updates an existing todo owned by the current user. Requires 'todos.own.edit' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todo updated successfully",
                     content = @Content(schema = @Schema(implementation = TodoResponse.class))),
@@ -137,9 +138,9 @@ public class TodoController {
     }
 
     @PatchMapping("/{id}/toggle-completed")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.TODOS_OWN_EDIT + "')")
     @Operation(summary = "Toggle todo completion status", 
-               description = "Toggles the completed status of a todo")
+               description = "Toggles the completed status of a todo owned by the current user. Requires 'todos.own.edit' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todo status toggled successfully",
                     content = @Content(schema = @Schema(implementation = TodoResponse.class))),
@@ -154,9 +155,9 @@ public class TodoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('NORMAL') or hasRole('MODERATOR') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.TODOS_OWN_DELETE + "')")
     @Operation(summary = "Delete a todo", 
-               description = "Deletes a todo by its ID")
+               description = "Deletes a todo owned by the current user. Requires 'todos.own.delete' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Todo deleted successfully"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - Login required"),
@@ -171,9 +172,9 @@ public class TodoController {
     }
 
     @PutMapping("/{id}/toggle-disabled")
-    @PreAuthorize("hasAnyRole('MODERATOR', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('" + PermissionConstants.TODOS_OTHERS_BAN + "')")
     @Operation(summary = "Toggle todo disabled status", 
-               description = "Toggles a todo's disabled status. Accessible to MODERATOR and SUPER_ADMIN.")
+               description = "Toggles a todo's disabled status. Requires 'todos.others.ban' permission.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Todo status toggled successfully",
                     content = @Content(schema = @Schema(implementation = MessageResponse.class))),

@@ -9,15 +9,18 @@ spring:
       keyvault:
         secret:
           property-source-enabled: false
+  flyway:
+    locations: filesystem:../db/migration
   
   jpa:
-    hibernate:
-      ddl-auto: create-drop
+    # hibernate: # Removed as it became empty after commenting ddl-auto
+    #   # ddl-auto: create-drop # Commented out to let Flyway manage the schema
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
+    # defer-datasource-initialization: true # Removed to avoid potential interference with Flyway
 
 # JWT configuration
 jwt:

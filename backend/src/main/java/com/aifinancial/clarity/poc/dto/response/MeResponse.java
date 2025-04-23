@@ -16,4 +16,5 @@ public class MeResponse {
     private String username;
     private String email;
     private String role;
+    private java.util.Set<String> permissions;
 } 

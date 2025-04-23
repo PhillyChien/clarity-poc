@@ -2,6 +2,7 @@ package com.aifinancial.clarity.poc.service.impl;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,9 @@ import com.aifinancial.clarity.poc.model.User;
 import com.aifinancial.clarity.poc.repository.FolderRepository;
 import com.aifinancial.clarity.poc.repository.TodoRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
+import com.aifinancial.clarity.poc.repository.RoleRepository;
 import com.aifinancial.clarity.poc.service.UsersService;
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 
 @Service
 public class UsersServiceImpl implements UsersService {
@@ -31,16 +34,19 @@ public class UsersServiceImpl implements UsersService {
     private final FolderRepository folderRepository;
     private final TodoRepository todoRepository;
     private final UserConverter userConverter;
+    private final RoleRepository roleRepository;
 
     public UsersServiceImpl(
             UserRepository userRepository,
             FolderRepository folderRepository,
             TodoRepository todoRepository,
-            UserConverter userConverter) {
+            UserConverter userConverter,
+            RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.folderRepository = folderRepository;
         this.todoRepository = todoRepository;
         this.userConverter = userConverter;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -55,24 +61,22 @@ public class UsersServiceImpl implements UsersService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + request.getUserId()));
 
-        // 檢查請求的角色是否有效
-        Role newRole;
-        try {
-            newRole = Role.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid role: " + request.getRole());
-        }
+        // Find the role entity by name
+        String requestedRoleName = request.getRole().toUpperCase();
+        Role newRole = roleRepository.findByName(requestedRoleName)
+                .orElseThrow(() -> new BadRequestException("Invalid role: " + request.getRole()));
 
-        // 不允許將用戶提升為 SUPER_ADMIN
-        if (newRole == Role.SUPER_ADMIN) {
+        // Prevent promotion to SUPER_ADMIN by comparing names using the constant
+        if (RoleConstants.ROLE_SUPER_ADMIN.equalsIgnoreCase(newRole.getName())) {
             throw new AccessDeniedException("Cannot promote users to SUPER_ADMIN role");
         }
 
-        // 更新用戶角色
+        // Update user role using the Role entity
         user.setRole(newRole);
         userRepository.save(user);
 
-        return new MessageResponse("User role updated successfully to " + newRole.name());
+        // Use role name from the entity in the response message
+        return new MessageResponse("User role updated successfully to " + newRole.getName());
     }
 
     @Override
@@ -85,7 +89,10 @@ public class UsersServiceImpl implements UsersService {
                 .map(folder -> FolderResponse.builder()
                         .id(folder.getId())
                         .name(folder.getName())
+                        .description(folder.getDescription())
                         .ownerId(folder.getOwner().getId())
+                        .ownerUsername(folder.getOwner().getUsername())
+                        .todoCount(folder.getTodos() != null ? folder.getTodos().size() : 0)
                         .createdAt(folder.getCreatedAt())
                         .updatedAt(folder.getUpdatedAt())
                         .build())
@@ -127,5 +134,10 @@ public class UsersServiceImpl implements UsersService {
 
         String status = todo.isDisabled() ? "disabled" : "enabled";
         return new MessageResponse("Todo successfully " + status);
+    }
+
+    @Override
+    public Optional<User> findUserById(Long userId) {
+        return userRepository.findById(userId);
     }
 } 

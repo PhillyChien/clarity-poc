@@ -1,196 +1,267 @@
 package com.aifinancial.clarity.poc.controller;
 
+import com.aifinancial.clarity.poc.config.SecurityConfig;
+import com.aifinancial.clarity.poc.config.WebConfig;
+import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
+import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.dto.response.UserResponse;
+import com.aifinancial.clarity.poc.exception.BadRequestException;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
+import com.aifinancial.clarity.poc.constant.PermissionConstants;
+import com.aifinancial.clarity.poc.constant.RoleConstants;
+import com.aifinancial.clarity.poc.model.Role;
+import com.aifinancial.clarity.poc.security.*; // Import security components
+import com.aifinancial.clarity.poc.service.AdminService; // Import the correct service
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import static org.mockito.quality.Strictness.LENIENT;
-import org.springframework.http.MediaType;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.test.web.servlet.MockMvc;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
-import com.aifinancial.clarity.poc.dto.response.MessageResponse;
-import com.aifinancial.clarity.poc.dto.response.UserResponse;
-import com.aifinancial.clarity.poc.exception.BadRequestException;
-import com.aifinancial.clarity.poc.exception.GlobalExceptionHandler;
-import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
-import com.aifinancial.clarity.poc.service.UsersService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = LENIENT)
+@WebMvcTest(UsersController.class) // Target the specific controller
+// Import SecurityConfig to apply method security (@PreAuthorize) and other beans needed
+@Import({SecurityConfig.class, WebConfig.class, JwtAuthenticationEntryPoint.class, JwtAuthenticationFilter.class})
 public class UsersControllerTest {
 
+    @Autowired
     private MockMvc mockMvc;
 
-    @Mock
-    private UsersService usersService;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-    @InjectMocks
-    private UsersController usersController;
+    @MockitoBean
+    private AdminService adminService;
 
-    private ObjectMapper objectMapper = new ObjectMapper();
-    
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService; // Mock security dependencies needed by SecurityConfig/JwtAuthFilter
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider; // Mock security dependencies needed by SecurityConfig/JwtAuthFilter
+
     private UserResponse userResponse1;
     private UserResponse userResponse2;
     private UserResponse userResponse3;
     private List<UserResponse> userResponses;
     private RoleUpdateRequest roleUpdateRequest;
     private MessageResponse messageResponse;
-    private MessageResponse accessDeniedResponse;
 
     @BeforeEach
     void setUp() {
-        // 初始化 MockMvc，添加全局異常處理器
-        mockMvc = MockMvcBuilders.standaloneSetup(usersController)
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
-        
-        // 配置 ObjectMapper 以處理 Java 8 日期時間類型
+        // Configure ObjectMapper if needed (often handled by @WebMvcTest)
         objectMapper.findAndRegisterModules();
-        
-        // 創建測試用戶響應對象
+
+        // Create test user response objects
         userResponse1 = UserResponse.builder()
                 .id(1L)
                 .username("normal_user")
                 .email("normal@example.com")
-                .role("NORMAL")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
+                .role(RoleConstants.ROLE_NORMAL) // Use RoleConstants
+                .createdAt(OffsetDateTime.now().minusDays(2))
+                .updatedAt(OffsetDateTime.now().minusDays(1))
                 .build();
 
         userResponse2 = UserResponse.builder()
                 .id(2L)
                 .username("moderator_user")
                 .email("moderator@example.com")
-                .role("MODERATOR")
-                .createdAt(OffsetDateTime.now())
-                .updatedAt(OffsetDateTime.now())
+                .role(RoleConstants.ROLE_MODERATOR) // Use RoleConstants
+                .createdAt(OffsetDateTime.now().minusHours(10))
+                .updatedAt(OffsetDateTime.now().minusHours(5))
                 .build();
 
         userResponse3 = UserResponse.builder()
                 .id(3L)
                 .username("admin_user")
                 .email("admin@example.com")
-                .role("SUPER_ADMIN")
-                .createdAt(OffsetDateTime.now())
+                .role(RoleConstants.ROLE_SUPER_ADMIN) // Use RoleConstants
+                .createdAt(OffsetDateTime.now().minusMinutes(30))
                 .updatedAt(OffsetDateTime.now())
                 .build();
 
         userResponses = Arrays.asList(userResponse1, userResponse2, userResponse3);
-        
-        // 創建角色更新請求
+
+        // Create role update request
         roleUpdateRequest = new RoleUpdateRequest();
         roleUpdateRequest.setUserId(1L);
-        roleUpdateRequest.setRole("MODERATOR");
-        
-        // 創建消息響應
-        messageResponse = new MessageResponse("User role updated successfully to MODERATOR");
-        accessDeniedResponse = new MessageResponse("Access denied: Cannot promote users to SUPER_ADMIN role");
+        roleUpdateRequest.setRole(RoleConstants.ROLE_MODERATOR); // Use RoleConstants
+
+        // Create message response for successful update
+        messageResponse = new MessageResponse("User role updated successfully to " + RoleConstants.ROLE_MODERATOR);
     }
 
+    // --- Test GET /api/users ---
     @Test
-    void testGetAllUsers() throws Exception {
-        when(usersService.getAllUsers()).thenReturn(userResponses);
+    @WithMockUser(authorities = PermissionConstants.USERS_VIEW) // User needs 'users.view' permission
+    void testGetAllUsers_Success() throws Exception {
+        when(adminService.getAllUsers()).thenReturn(userResponses);
 
-        mockMvc.perform(get("/users"))
+        mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(3)))
-                .andExpect(jsonPath("$[0].id", is(1)))
-                .andExpect(jsonPath("$[0].username", is("normal_user")))
-                .andExpect(jsonPath("$[0].role", is("NORMAL")))
-                .andExpect(jsonPath("$[1].id", is(2)))
-                .andExpect(jsonPath("$[1].role", is("MODERATOR")))
-                .andExpect(jsonPath("$[2].id", is(3)))
-                .andExpect(jsonPath("$[2].role", is("SUPER_ADMIN")));
+                .andExpect(jsonPath("$[0].role", is(RoleConstants.ROLE_NORMAL)))
+                .andExpect(jsonPath("$[1].role", is(RoleConstants.ROLE_MODERATOR)))
+                .andExpect(jsonPath("$[2].role", is(RoleConstants.ROLE_SUPER_ADMIN)));
 
-        verify(usersService, times(1)).getAllUsers();
+        verify(adminService, times(1)).getAllUsers();
     }
 
     @Test
-    void testUpdateUserRole() throws Exception {
-        when(usersService.updateUserRole(any(RoleUpdateRequest.class))).thenReturn(messageResponse);
+    @WithMockUser // User without 'users.view' permission
+    void testGetAllUsers_Forbidden() throws Exception {
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isForbidden()); // Expect 403 Forbidden due to @PreAuthorize
 
-        mockMvc.perform(post("/users/role")
+        verify(adminService, never()).getAllUsers();
+    }
+
+    @Test
+    @WithAnonymousUser // Unauthenticated user
+    void testGetAllUsers_Unauthorized() throws Exception {
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isUnauthorized()); // Expect 401 Unauthorized
+
+        verify(adminService, never()).getAllUsers();
+    }
+
+    // --- Test PUT /api/users/role ---
+    @Test
+    @WithMockUser(authorities = PermissionConstants.USERS_MANAGE) // User needs 'users.manage' permission
+    void testUpdateUserRole_Success() throws Exception {
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class))).thenReturn(messageResponse);
+
+        mockMvc.perform(put("/api/users/role")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(roleUpdateRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("User role updated successfully to MODERATOR")));
+                .andExpect(jsonPath("$.message", is(messageResponse.getMessage())));
 
-        verify(usersService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+        verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
     }
-    
-    @Test
-    void testUpdateUserRoleWithAccessDenied() throws Exception {
-        // 創建測試 SUPER_ADMIN 請求
-        RoleUpdateRequest superAdminRequest = new RoleUpdateRequest();
-        superAdminRequest.setUserId(1L);
-        superAdminRequest.setRole("SUPER_ADMIN");
-        
-        // 模擬服務拋出 AccessDeniedException
-        when(usersService.updateUserRole(any(RoleUpdateRequest.class)))
-            .thenThrow(new AccessDeniedException("Cannot promote users to SUPER_ADMIN role"));
 
-        mockMvc.perform(post("/users/role")
+    @Test
+    @WithMockUser(authorities = PermissionConstants.USERS_VIEW) // User with insufficient permission
+    void testUpdateUserRole_Forbidden_InsufficientPermission() throws Exception {
+        mockMvc.perform(put("/api/users/role")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(superAdminRequest)))
+                        .content(objectMapper.writeValueAsString(roleUpdateRequest)))
                 .andExpect(status().isForbidden());
 
-        verify(usersService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+        verify(adminService, never()).updateUserRole(any(RoleUpdateRequest.class));
     }
-    
+
     @Test
-    void testUpdateUserRoleWithUserNotFound() throws Exception {
-        // 模擬服務拋出 ResourceNotFoundException
-        when(usersService.updateUserRole(any(RoleUpdateRequest.class)))
-            .thenThrow(new ResourceNotFoundException("User not found with ID: 999"));
-
-        RoleUpdateRequest nonExistentUserRequest = new RoleUpdateRequest();
-        nonExistentUserRequest.setUserId(999L);
-        nonExistentUserRequest.setRole("MODERATOR");
-
-        mockMvc.perform(post("/users/role")
+    @WithAnonymousUser // Unauthenticated user
+    void testUpdateUserRole_Unauthorized() throws Exception {
+         mockMvc.perform(put("/api/users/role")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(nonExistentUserRequest)))
-                .andExpect(status().isNotFound());
+                        .content(objectMapper.writeValueAsString(roleUpdateRequest)))
+                .andExpect(status().isUnauthorized());
 
-        verify(usersService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+        verify(adminService, never()).updateUserRole(any(RoleUpdateRequest.class));
     }
-    
+
     @Test
-    void testUpdateUserRoleWithInvalidRole() throws Exception {
-        // 模擬服務拋出 BadRequestException
-        when(usersService.updateUserRole(any(RoleUpdateRequest.class)))
-            .thenThrow(new BadRequestException("Invalid role: INVALID_ROLE"));
+    @WithMockUser(authorities = PermissionConstants.USERS_MANAGE)
+    void testUpdateUserRole_ServiceThrowsAccessDenied() throws Exception {
+        // Simulate service denying the promotion to SUPER_ADMIN
+        RoleUpdateRequest promoteToAdminRequest = new RoleUpdateRequest(1L, RoleConstants.ROLE_SUPER_ADMIN);
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class)))
+            .thenThrow(new AccessDeniedException("Cannot promote users to SUPER_ADMIN role"));
 
-        RoleUpdateRequest invalidRoleRequest = new RoleUpdateRequest();
-        invalidRoleRequest.setUserId(1L);
-        invalidRoleRequest.setRole("INVALID_ROLE");
-
-        mockMvc.perform(post("/users/role")
+        mockMvc.perform(put("/api/users/role")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRoleRequest)))
-                .andExpect(status().isBadRequest());
+                        .content(objectMapper.writeValueAsString(promoteToAdminRequest)))
+                .andExpect(status().isForbidden()) // GlobalExceptionHandler maps AccessDeniedException to 403
+                .andExpect(jsonPath("$.error", is("Access Denied")))
+                .andExpect(jsonPath("$.message", is("Access denied: Cannot promote users to SUPER_ADMIN role")));
 
-        verify(usersService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+        verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
     }
-} 
+
+    @Test
+    @WithMockUser(authorities = PermissionConstants.USERS_MANAGE)
+    void testUpdateUserRole_ServiceThrowsUserNotFound() throws Exception {
+        Long nonExistentUserId = 999L;
+        RoleUpdateRequest request = new RoleUpdateRequest(nonExistentUserId, RoleConstants.ROLE_MODERATOR);
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class)))
+            .thenThrow(new ResourceNotFoundException("User not found with ID: " + nonExistentUserId));
+
+        mockMvc.perform(put("/api/users/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound()) // GlobalExceptionHandler maps ResourceNotFoundException to 404
+                .andExpect(jsonPath("$.error", is("Resource Not Found")))
+                .andExpect(jsonPath("$.message", is("User not found with ID: " + nonExistentUserId)));
+
+        verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+    }
+
+     @Test
+    @WithMockUser(authorities = PermissionConstants.USERS_MANAGE)
+    void testUpdateUserRole_ServiceThrowsInvalidRole() throws Exception {
+        when(adminService.updateUserRole(any(RoleUpdateRequest.class)))
+                .thenThrow(new BadRequestException("Invalid role: " + RoleConstants.ROLE_MODERATOR + "_INVALID"));
+
+        RoleUpdateRequest request = new RoleUpdateRequest(1L, RoleConstants.ROLE_MODERATOR);
+        mockMvc.perform(put("/api/users/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest()) // GlobalExceptionHandler maps BadRequestException to 400
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Invalid role: " + RoleConstants.ROLE_MODERATOR + "_INVALID")));
+
+        verify(adminService, times(1)).updateUserRole(any(RoleUpdateRequest.class));
+    }
+
+     @Test
+    @WithMockUser(authorities = PermissionConstants.USERS_MANAGE)
+    void testUpdateUserRole_RequestBodyValidationFailure_NullUserId() throws Exception {
+        RoleUpdateRequest invalidRequest = new RoleUpdateRequest(null, RoleConstants.ROLE_MODERATOR); // userId is null
+
+        mockMvc.perform(put("/api/users/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest()) // Validation fails -> 400
+                .andExpect(jsonPath("$.error", is("Validation Error")))
+                .andExpect(jsonPath("$.message", is("{userId=User ID cannot be null}")));
+
+
+        verify(adminService, never()).updateUserRole(any(RoleUpdateRequest.class));
+    }
+
+    @Test
+    @WithMockUser(authorities = PermissionConstants.USERS_MANAGE)
+    void testUpdateUserRole_RequestBodyValidationFailure_BlankRole() throws Exception {
+        RoleUpdateRequest invalidRequest = new RoleUpdateRequest(1L, " "); // role is blank
+
+        mockMvc.perform(put("/api/users/role")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest()) // Validation fails -> 400
+                 .andExpect(jsonPath("$.error", is("Validation Error")))
+                 .andExpect(jsonPath("$.message", is("{role=Role cannot be blank}")));
+
+        verify(adminService, never()).updateUserRole(any(RoleUpdateRequest.class));
+    }
+}

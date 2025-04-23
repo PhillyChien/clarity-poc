@@ -1,13 +1,20 @@
 package com.aifinancial.clarity.poc.service.impl;
 
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 import com.aifinancial.clarity.poc.dto.request.LoginRequest;
 import com.aifinancial.clarity.poc.dto.request.RegisterRequest;
 import com.aifinancial.clarity.poc.dto.response.MeResponse;
@@ -15,6 +22,7 @@ import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.exception.BadRequestException;
 import com.aifinancial.clarity.poc.model.Role;
 import com.aifinancial.clarity.poc.model.User;
+import com.aifinancial.clarity.poc.repository.RoleRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.security.JwtTokenProvider;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
@@ -25,25 +33,27 @@ public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager, UserRepository userRepository,
-                          PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+                           RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
     }
     
     /**
-     * 用於 login 方法臨時返回帶有 token 的 MeResponse
+     * Temporary class to return MeResponse with token for login
      */
     public static class TokenMeResponse extends MeResponse {
         private String token;
         
-        public TokenMeResponse(String type, Long id, String username, String email, String role, String token) {
-            super(type, id, username, email, role);
+        public TokenMeResponse(String type, Long id, String username, String email, String role, Set<String> permissions, String token) {
+            super(type, id, username, email, role, permissions);
             this.token = token;
         }
         
@@ -62,18 +72,26 @@ public class AuthServiceImpl implements AuthService {
         String jwt = jwtTokenProvider.generateToken(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        
         String role = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_")) 
                 .findFirst()
-                .map(authority -> authority.getAuthority().replace("ROLE_", ""))
-                .orElse("");
+                .map(authority -> authority.replace("ROLE_", ""))
+                .orElse(""); 
+        
+        Set<String> permissions = userDetails.getAuthorities().stream()
+                                      .map(GrantedAuthority::getAuthority)
+                                      .filter(auth -> !auth.startsWith("ROLE_"))
+                                      .collect(Collectors.toSet());
 
-        // 使用 TokenMeResponse 返回帶有 token 的響應
         return new TokenMeResponse(
                 "Bearer",
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
                 role,
+                permissions,
                 jwt
         );
     }
@@ -90,21 +108,24 @@ public class AuthServiceImpl implements AuthService {
                 throw new BadRequestException("Email is already in use");
             }
 
-            // 創建新用戶
+            Role normalRole = roleRepository.findByName(RoleConstants.ROLE_NORMAL)
+                    .orElseThrow(() -> new NoSuchElementException("NORMAL role not found in database. Please initialize roles first."));
+
             User user = new User();
             user.setUsername(registerRequest.getUsername());
             user.setEmail(registerRequest.getEmail());
             user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-            user.setRole(Role.NORMAL);
+            user.setRole(normalRole);
 
             userRepository.save(user);
 
             return new MessageResponse("User registered successfully!");
         } catch (BadRequestException e) {
-            // 重新抛出BadRequestException
             throw e;
+        } catch (NoSuchElementException e) {
+             throw new RuntimeException("Server configuration error: " + e.getMessage(), e);
         } catch (Exception e) {
-            throw new BadRequestException("Registration failed: " + e.getMessage());
+            throw new BadRequestException("Registration failed due to an unexpected error.");
         }
     }
 } 

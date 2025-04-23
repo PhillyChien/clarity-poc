@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,6 +38,7 @@ import com.aifinancial.clarity.poc.repository.FolderRepository;
 import com.aifinancial.clarity.poc.repository.TodoRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.service.impl.ModeratorServiceImpl;
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -64,27 +66,31 @@ public class ModeratorServiceTest {
     private Todo todo1;
     private Todo todo2;
     private Todo todo3;
-    private List<Folder> userFolders;
-    private List<Todo> userTodos;
+    private Role normalRole;
+    private Role moderatorRole;
 
     @BeforeEach
     void setUp() {
-        // 創建測試用戶
+        // Create Role entities (simple version for this test)
+        normalRole = new Role(1L, RoleConstants.ROLE_NORMAL, new HashSet<>());
+        moderatorRole = new Role(2L, RoleConstants.ROLE_MODERATOR, new HashSet<>());
+        
+        // Create test users with Role entities
         normalUser = new User();
         normalUser.setId(1L);
         normalUser.setUsername("normal_user");
         normalUser.setEmail("normal@example.com");
         normalUser.setPassword("password");
-        normalUser.setRole(Role.NORMAL);
+        normalUser.setRole(normalRole); // Use Role entity
 
         moderatorUser = new User();
         moderatorUser.setId(2L);
         moderatorUser.setUsername("moderator_user");
         moderatorUser.setEmail("moderator@example.com");
         moderatorUser.setPassword("password");
-        moderatorUser.setRole(Role.MODERATOR);
+        moderatorUser.setRole(moderatorRole); // Use Role entity
 
-        // 創建測試文件夾
+        // Create test folders (ensure owners have roles set)
         folder1 = new Folder();
         folder1.setId(1L);
         folder1.setName("Test Folder 1");
@@ -101,7 +107,7 @@ public class ModeratorServiceTest {
         folder2.setCreatedAt(OffsetDateTime.now());
         folder2.setUpdatedAt(OffsetDateTime.now());
 
-        // 創建測試待辦事項
+        // Create test todos (ensure owners have roles set)
         todo1 = new Todo();
         todo1.setId(1L);
         todo1.setTitle("Test Todo 1");
@@ -129,15 +135,19 @@ public class ModeratorServiceTest {
         todo3.setTitle("Test Todo 3");
         todo3.setDescription("Todo Description 3");
         todo3.setCompleted(false);
-        todo3.setDisabled(true); // 已禁用
+        todo3.setDisabled(true); // Start as disabled
         todo3.setOwner(moderatorUser);
         todo3.setFolder(folder2);
         todo3.setCreatedAt(OffsetDateTime.now());
         todo3.setUpdatedAt(OffsetDateTime.now());
-
-        // 創建列表
-        userFolders = Arrays.asList(folder1, folder2);
-        userTodos = Arrays.asList(todo1, todo2, todo3);
+        
+        // Mock repository responses (ensure User objects with Roles are returned)
+        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
+        when(userRepository.findById(moderatorUser.getId())).thenReturn(Optional.of(moderatorUser));
+        when(todoRepository.findById(todo1.getId())).thenReturn(Optional.of(todo1));
+        when(todoRepository.findById(todo3.getId())).thenReturn(Optional.of(todo3));
+        when(folderRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(folder1));
+        when(todoRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(todo1, todo2));
     }
     
     @Test
@@ -150,125 +160,117 @@ public class ModeratorServiceTest {
 
     @Test
     void testGetFoldersByUserId() {
-        // 模擬存儲庫
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(folderRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(folder1));
-
-        // 執行測試
+        // Mocks already set up in setUp
+        // Execute test
         List<FolderResponse> result = moderatorService.getFoldersByUserId(normalUser.getId());
 
-        // 驗證結果
+        // Verify result
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals(folder1.getId(), result.get(0).getId());
         assertEquals(folder1.getName(), result.get(0).getName());
         assertEquals(folder1.getOwner().getId(), result.get(0).getOwnerId());
         
-        // 驗證方法調用
+        // Verify method calls
         verify(userRepository, times(1)).findById(normalUser.getId());
         verify(folderRepository, times(1)).findByOwnerOrderByCreatedAtDesc(normalUser);
     }
 
     @Test
     void testGetTodosByUserId() {
-        // 模擬存儲庫
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(todoRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(todo1, todo2));
-
-        // 執行測試
+        // Mocks already set up in setUp
+        // Execute test
         List<TodoResponse> result = moderatorService.getTodosByUserId(normalUser.getId());
 
-        // 驗證結果
+        // Verify result
         assertNotNull(result);
         assertEquals(2, result.size());
         assertEquals(todo1.getId(), result.get(0).getId());
         assertEquals(todo1.getTitle(), result.get(0).getTitle());
         
-        // 驗證方法調用
+        // Verify method calls
         verify(userRepository, times(1)).findById(normalUser.getId());
         verify(todoRepository, times(1)).findByOwnerOrderByCreatedAtDesc(normalUser);
     }
 
     @Test
     void testToggleTodoDisabledStatusToDisable() {
-        // 初始狀態為未禁用
-        todo1.setDisabled(false);
+        // Initial state is not disabled (set in setUp)
+        assertFalse(todo1.isDisabled());
         
-        // 模擬存儲庫
-        when(todoRepository.findById(todo1.getId())).thenReturn(Optional.of(todo1));
-        when(todoRepository.save(any(Todo.class))).thenReturn(todo1);
+        // Mocks already set up in setUp
+        when(todoRepository.save(any(Todo.class))).thenReturn(todo1); // Mock save
 
-        // 執行測試
+        // Execute test
         MessageResponse result = moderatorService.toggleTodoDisabledStatus(todo1.getId());
 
-        // 驗證結果
+        // Verify result
         assertNotNull(result);
         assertTrue(result.getMessage().contains("disabled"));
-        assertTrue(todo1.isDisabled()); // 現在應該被禁用
+        assertTrue(todo1.isDisabled()); // Should now be disabled
         
-        // 驗證方法調用
+        // Verify method calls
         verify(todoRepository, times(1)).findById(todo1.getId());
         verify(todoRepository, times(1)).save(todo1);
     }
 
     @Test
     void testToggleTodoDisabledStatusToEnable() {
-        // 初始狀態為已禁用
-        todo3.setDisabled(true);
+        // Initial state is disabled (set in setUp)
+        assertTrue(todo3.isDisabled());
         
-        // 模擬存儲庫
-        when(todoRepository.findById(todo3.getId())).thenReturn(Optional.of(todo3));
-        when(todoRepository.save(any(Todo.class))).thenReturn(todo3);
+        // Mocks already set up in setUp
+        when(todoRepository.save(any(Todo.class))).thenReturn(todo3); // Mock save
 
-        // 執行測試
+        // Execute test
         MessageResponse result = moderatorService.toggleTodoDisabledStatus(todo3.getId());
 
-        // 驗證結果
+        // Verify result
         assertNotNull(result);
         assertTrue(result.getMessage().contains("enabled"));
-        assertFalse(todo3.isDisabled()); // 現在應該被啟用
+        assertFalse(todo3.isDisabled()); // Should now be enabled
         
-        // 驗證方法調用
+        // Verify method calls
         verify(todoRepository, times(1)).findById(todo3.getId());
         verify(todoRepository, times(1)).save(todo3);
     }
 
     @Test
     void testToggleTodoDisabledStatusTodoNotFound() {
-        // 模擬存儲庫 - 找不到待辦事項
+        // Mock repository - todo not found
         when(todoRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // 執行測試並驗證異常
+        // Execute test & verify exception
         assertThrows(ResourceNotFoundException.class, () -> moderatorService.toggleTodoDisabledStatus(999L));
         
-        // 驗證方法調用
+        // Verify method calls
         verify(todoRepository, times(1)).findById(999L);
         verify(todoRepository, never()).save(any(Todo.class));
     }
     
     @Test
     void testGetFoldersByUserIdUserNotFound() {
-        // 模拟找不到用户
+        // Mock repository - user not found
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
-        
-        // 执行测试并验证异常
+
+        // Execute test & verify exception
         assertThrows(ResourceNotFoundException.class, () -> moderatorService.getFoldersByUserId(999L));
-        
-        // 验证方法调用
+
+        // Verify method calls
         verify(userRepository, times(1)).findById(999L);
-        verify(folderRepository, never()).findByOwnerOrderByCreatedAtDesc(any());
+        verify(folderRepository, never()).findByOwnerOrderByCreatedAtDesc(any(User.class));
     }
-    
+
     @Test
     void testGetTodosByUserIdUserNotFound() {
-        // 模拟找不到用户
+        // Mock repository - user not found
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
-        
-        // 执行测试并验证异常
+
+        // Execute test & verify exception
         assertThrows(ResourceNotFoundException.class, () -> moderatorService.getTodosByUserId(999L));
-        
-        // 验证方法调用
+
+        // Verify method calls
         verify(userRepository, times(1)).findById(999L);
-        verify(todoRepository, never()).findByOwnerOrderByCreatedAtDesc(any());
+        verify(todoRepository, never()).findByOwnerOrderByCreatedAtDesc(any(User.class));
     }
 } 

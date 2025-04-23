@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
@@ -185,7 +186,7 @@ public class TodoServiceImpl implements TodoService {
         
         // Check if the current user is the owner or admin
         if (!todo.getOwner().getId().equals(currentUser.getId()) && 
-                !currentUser.getRole().equals(Role.SUPER_ADMIN)) {
+                ! (currentUser.getRole() != null && RoleConstants.ROLE_SUPER_ADMIN.equalsIgnoreCase(currentUser.getRole().getName())) ) {
             throw new UnauthorizedException("Not authorized to delete this todo");
         }
         

@@ -1,10 +1,14 @@
 package com.aifinancial.clarity.poc.security;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import com.aifinancial.clarity.poc.model.Permission;
+import com.aifinancial.clarity.poc.model.Role;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -34,16 +38,26 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     public static UserDetailsImpl build(User user) {
-        // 將角色轉換為 "ROLE_" 前綴的權限格式
-        String roleName = "ROLE_" + user.getRole().name();
-        List<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority(roleName));
+        Role role = user.getRole();
+        List<GrantedAuthority> authorities = new ArrayList<>();
+
+        if (role != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+            
+            if (role.getPermissions() != null) {
+                role.getPermissions().stream()
+                    .map(permission -> new SimpleGrantedAuthority(permission.getName()))
+                    .forEach(authorities::add);
+            }
+        }
 
         return new UserDetailsImpl(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
-                authorities);
+                authorities
+        );
     }
 
     public Long getId() {

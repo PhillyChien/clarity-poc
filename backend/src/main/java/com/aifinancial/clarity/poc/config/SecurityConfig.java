@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 import com.aifinancial.clarity.poc.security.JwtAuthenticationEntryPoint;
 import com.aifinancial.clarity.poc.security.JwtAuthenticationFilter;
 
@@ -44,8 +45,8 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/.well-known/jwks.json").permitAll()
-                .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
-                .requestMatchers("/moderator/**").hasAnyRole("MODERATOR", "SUPER_ADMIN")
+                .requestMatchers("/admin/**").hasRole(RoleConstants.ROLE_SUPER_ADMIN)
+                .requestMatchers("/moderator/**").hasAnyRole(RoleConstants.ROLE_MODERATOR, RoleConstants.ROLE_SUPER_ADMIN)
                 .anyRequest().authenticated()
             );
 

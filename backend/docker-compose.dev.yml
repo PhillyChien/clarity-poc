@@ -29,9 +29,9 @@ services:
       FLYWAY_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       # Mount your migration scripts to the location specified in flyway.conf
-      - ./db/migration:/flyway/sql:ro
+      - ../db/migration:/flyway/sql:ro
       # Mount your config file
-      - ./db/flyway/flyway.conf:/flyway/conf/flyway.conf:ro
+      - ../db/flyway/flyway.conf:/flyway/conf/flyway.conf:ro
     # Command tells Flyway to use the config file and run migrate
     command: ["-configFiles=/flyway/conf/flyway.conf", "migrate"]
     networks:

@@ -1,12 +1,14 @@
 package com.aifinancial.clarity.poc.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.dto.response.UserResponse;
+import com.aifinancial.clarity.poc.model.User;
 
 /**
  * 用戶管理服務接口，整合了 AdminService 和 ModeratorService 的功能
@@ -45,4 +47,11 @@ public interface UsersService {
      * @return 操作結果消息
      */
     MessageResponse toggleTodoDisabledStatus(Long todoId);
+
+    /**
+     * Find a user by their ID.
+     * @param userId The ID of the user to find.
+     * @return An Optional containing the User if found, or empty otherwise.
+     */
+    Optional<User> findUserById(Long userId);
 } 

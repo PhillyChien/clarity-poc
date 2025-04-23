@@ -4,8 +4,10 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,11 +29,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import static org.mockito.Mockito.never;
 
 import com.aifinancial.clarity.poc.dto.request.TodoRequest;
 import com.aifinancial.clarity.poc.dto.response.TodoResponse;
 import com.aifinancial.clarity.poc.exception.UnauthorizedException;
 import com.aifinancial.clarity.poc.model.Folder;
+import com.aifinancial.clarity.poc.model.Permission;
 import com.aifinancial.clarity.poc.model.Role;
 import com.aifinancial.clarity.poc.model.Todo;
 import com.aifinancial.clarity.poc.model.User;
@@ -40,6 +44,8 @@ import com.aifinancial.clarity.poc.repository.TodoRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
 import com.aifinancial.clarity.poc.service.impl.TodoServiceImpl;
+import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
@@ -71,38 +77,55 @@ public class TodoServiceTest {
     private Todo todo1;
     private Todo todo2;
     private Todo todo3;
+    private Role normalRole;
+    private Role moderatorRole;
+    private Role superAdminRole;
     private UserDetailsImpl normalUserDetails;
-    private UserDetailsImpl moderatorUserDetails;
-    private UserDetailsImpl adminUserDetails;
-    private List<SimpleGrantedAuthority> normalAuthorities;
-    private List<SimpleGrantedAuthority> moderatorAuthorities;
-    private List<SimpleGrantedAuthority> adminAuthorities;
+
+    private Collection<? extends GrantedAuthority> buildAuthorities(Role role) {
+        Set<GrantedAuthority> authorities = new HashSet<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+        if (role.getPermissions() != null) {
+            role.getPermissions().forEach(permission ->
+                authorities.add(new SimpleGrantedAuthority(permission.getName()))
+            );
+        }
+        return authorities;
+    }
 
     @BeforeEach
     void setUp() {
-        // 创建测试用户
+        Permission todoRead = new Permission("todo:read");
+        Permission todoWrite = new Permission("todo:write");
+        Permission todoDelete = new Permission("todo:delete");
+        Permission folderRead = new Permission("folder:read");
+        Permission allPermission = new Permission("*");
+
+        normalRole = new Role(1L, RoleConstants.ROLE_NORMAL, new HashSet<>());
+        moderatorRole = new Role(2L, RoleConstants.ROLE_MODERATOR, new HashSet<>());
+        superAdminRole = new Role(3L, RoleConstants.ROLE_SUPER_ADMIN, new HashSet<>());
+
         normalUser = new User();
         normalUser.setId(1L);
         normalUser.setUsername("normal_user");
         normalUser.setEmail("normal@example.com");
         normalUser.setPassword("password");
-        normalUser.setRole(Role.NORMAL);
+        normalUser.setRole(normalRole);
 
         moderatorUser = new User();
         moderatorUser.setId(2L);
         moderatorUser.setUsername("moderator_user");
         moderatorUser.setEmail("moderator@example.com");
         moderatorUser.setPassword("password");
-        moderatorUser.setRole(Role.MODERATOR);
+        moderatorUser.setRole(moderatorRole);
 
         adminUser = new User();
         adminUser.setId(3L);
         adminUser.setUsername("admin_user");
         adminUser.setEmail("admin@example.com");
         adminUser.setPassword("password");
-        adminUser.setRole(Role.SUPER_ADMIN);
+        adminUser.setRole(superAdminRole);
 
-        // 创建测试文件夹
         folder1 = new Folder();
         folder1.setId(1L);
         folder1.setName("Test Folder 1");
@@ -119,7 +142,6 @@ public class TodoServiceTest {
         folder2.setCreatedAt(OffsetDateTime.now());
         folder2.setUpdatedAt(OffsetDateTime.now());
 
-        // 创建测试待办事项
         todo1 = new Todo();
         todo1.setId(1L);
         todo1.setTitle("Test Todo 1");
@@ -153,16 +175,11 @@ public class TodoServiceTest {
         todo3.setCreatedAt(OffsetDateTime.now());
         todo3.setUpdatedAt(OffsetDateTime.now());
 
-        // 设置文件夹与Todo的关系
         folder1.setTodos(Arrays.asList(todo1, todo2));
         folder2.setTodos(Collections.singletonList(todo3));
 
-        // 创建权限列表
-        normalAuthorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_NORMAL"));
-        moderatorAuthorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_MODERATOR"));
-        adminAuthorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        Collection<? extends GrantedAuthority> normalAuthorities = buildAuthorities(normalRole);
 
-        // 创建UserDetails对象
         normalUserDetails = new UserDetailsImpl(
                 normalUser.getId(),
                 normalUser.getUsername(),
@@ -171,38 +188,28 @@ public class TodoServiceTest {
                 normalAuthorities
         );
 
-        moderatorUserDetails = new UserDetailsImpl(
-                moderatorUser.getId(),
-                moderatorUser.getUsername(),
-                moderatorUser.getEmail(),
-                moderatorUser.getPassword(),
-                moderatorAuthorities
-        );
 
-        adminUserDetails = new UserDetailsImpl(
-                adminUser.getId(),
-                adminUser.getUsername(),
-                adminUser.getEmail(),
-                adminUser.getPassword(),
-                adminAuthorities
-        );
-
-        // 设置SecurityContextHolder
+        when(securityContext.getAuthentication()).thenReturn(authentication);
         SecurityContextHolder.setContext(securityContext);
+
+        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
+        when(userRepository.findById(moderatorUser.getId())).thenReturn(Optional.of(moderatorUser));
+        when(userRepository.findById(adminUser.getId())).thenReturn(Optional.of(adminUser));
+        when(folderRepository.findById(folder1.getId())).thenReturn(Optional.of(folder1));
+        when(folderRepository.findById(folder2.getId())).thenReturn(Optional.of(folder2));
+        when(todoRepository.findById(todo1.getId())).thenReturn(Optional.of(todo1));
+        when(todoRepository.findById(todo2.getId())).thenReturn(Optional.of(todo2));
+        when(todoRepository.findById(todo3.getId())).thenReturn(Optional.of(todo3));
+        when(todoRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(todo1, todo2));
+        when(todoRepository.findByFolderOrderByCreatedAtDesc(folder1)).thenReturn(Arrays.asList(todo1, todo2));
     }
 
     @Test
     void testGetCurrentUserTodos() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(todoRepository.findByOwnerOrderByCreatedAtDesc(normalUser)).thenReturn(Arrays.asList(todo1, todo2));
 
-        // 执行测试
         List<TodoResponse> result = todoService.getCurrentUserTodos();
 
-        // 验证结果
         assertNotNull(result);
         assertEquals(2, result.size());
         assertEquals(todo1.getId(), result.get(0).getId());
@@ -211,42 +218,39 @@ public class TodoServiceTest {
         assertEquals(todo1.isCompleted(), result.get(0).isCompleted());
         assertEquals(normalUser.getId(), result.get(0).getOwnerId());
         assertEquals(normalUser.getUsername(), result.get(0).getOwnerUsername());
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(todoRepository, times(1)).findByOwnerOrderByCreatedAtDesc(normalUser);
     }
 
     @Test
     void testGetTodosByFolder() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(folderRepository.findById(folder1.getId())).thenReturn(Optional.of(folder1));
-        when(todoRepository.findByFolderOrderByCreatedAtDesc(folder1)).thenReturn(Arrays.asList(todo1, todo2));
 
-        // 执行测试
         List<TodoResponse> result = todoService.getTodosByFolder(folder1.getId());
 
-        // 验证结果
         assertNotNull(result);
         assertEquals(2, result.size());
         assertEquals(folder1.getId(), result.get(0).getFolderId());
         assertEquals(folder1.getName(), result.get(0).getFolderName());
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(folderRepository, times(1)).findById(folder1.getId());
+        verify(todoRepository, times(1)).findByFolderOrderByCreatedAtDesc(folder1);
     }
 
     @Test
     void testGetTodosByFolderUnauthorized() {
-        // 模拟安全上下文
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(folderRepository.findById(folder2.getId())).thenReturn(Optional.of(folder2));
 
-        // 验证普通用户无法查看不属于自己的文件夹中的待办事项
         assertThrows(UnauthorizedException.class, () -> todoService.getTodosByFolder(folder2.getId()));
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(folderRepository, times(1)).findById(folder2.getId());
+        verify(todoRepository, never()).findByFolderOrderByCreatedAtDesc(any(Folder.class));
     }
 
     @Test
     void testCreateTodo() {
-        // 准备测试数据
+        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
+        
         TodoRequest request = new TodoRequest();
         request.setTitle("New Todo");
         request.setDescription("New Description");
@@ -264,17 +268,10 @@ public class TodoServiceTest {
         newTodo.setCreatedAt(OffsetDateTime.now());
         newTodo.setUpdatedAt(OffsetDateTime.now());
 
-        // 模拟安全上下文和存储库
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(folderRepository.findById(folder1.getId())).thenReturn(Optional.of(folder1));
         when(todoRepository.save(any(Todo.class))).thenReturn(newTodo);
 
-        // 执行测试
         TodoResponse result = todoService.createTodo(request);
 
-        // 验证结果
         assertNotNull(result);
         assertEquals(newTodo.getId(), result.getId());
         assertEquals(request.getTitle(), result.getTitle());
@@ -282,103 +279,135 @@ public class TodoServiceTest {
         assertEquals(request.isCompleted(), result.isCompleted());
         assertEquals(normalUser.getId(), result.getOwnerId());
         assertEquals(folder1.getId(), result.getFolderId());
+        
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(folderRepository, times(1)).findById(folder1.getId());
+        verify(todoRepository, times(1)).save(any(Todo.class));
+    }
+
+    @Test
+    void testCreateTodoUnauthorizedFolder() {
+        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
+        
+        TodoRequest request = new TodoRequest();
+        request.setTitle("Unauthorized Todo");
+        request.setDescription("This should fail");
+        request.setFolderId(folder2.getId());
+
+        assertThrows(UnauthorizedException.class, () -> {
+            todoService.createTodo(request);
+        });
+
+        verify(folderRepository, times(1)).findById(folder2.getId());
+        verify(todoRepository, never()).save(any(Todo.class));
     }
 
     @Test
     void testUpdateTodo() {
-        // 准备测试数据
+        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
+        
         TodoRequest request = new TodoRequest();
-        request.setTitle("Updated Todo");
-        request.setDescription("Updated Description");
+        request.setTitle("Updated Todo 1");
+        request.setDescription("Updated Desc 1");
         request.setCompleted(true);
-        request.setFolderId(folder1.getId());
+        request.setFolderId(null);
 
         Todo updatedTodo = new Todo();
         updatedTodo.setId(todo1.getId());
         updatedTodo.setTitle(request.getTitle());
         updatedTodo.setDescription(request.getDescription());
         updatedTodo.setCompleted(request.isCompleted());
-        updatedTodo.setDisabled(false);
         updatedTodo.setOwner(normalUser);
-        updatedTodo.setFolder(folder1);
+        updatedTodo.setFolder(null);
         updatedTodo.setCreatedAt(todo1.getCreatedAt());
         updatedTodo.setUpdatedAt(OffsetDateTime.now());
 
-        // 模拟安全上下文和存储库
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(todoRepository.findById(todo1.getId())).thenReturn(Optional.of(todo1));
-        when(folderRepository.findById(folder1.getId())).thenReturn(Optional.of(folder1));
         when(todoRepository.save(any(Todo.class))).thenReturn(updatedTodo);
 
-        // 执行测试
         TodoResponse result = todoService.updateTodo(todo1.getId(), request);
 
-        // 验证结果
         assertNotNull(result);
         assertEquals(updatedTodo.getId(), result.getId());
         assertEquals(request.getTitle(), result.getTitle());
-        assertEquals(request.getDescription(), result.getDescription());
         assertEquals(request.isCompleted(), result.isCompleted());
+        assertEquals(null, result.getFolderId());
+        
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(todoRepository, times(1)).findById(todo1.getId());
+        verify(folderRepository, never()).findById(any());
+        verify(todoRepository, times(1)).save(any(Todo.class));
+    }
+
+    @Test
+    void testUpdateTodoUnauthorized() {
+        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
+        
+        TodoRequest request = new TodoRequest();
+        request.setTitle("Updated Unauthorized Todo");
+
+        assertThrows(UnauthorizedException.class, () -> {
+            todoService.updateTodo(todo3.getId(), request);
+        });
+        
+        verify(todoRepository, times(1)).findById(todo3.getId());
+        verify(todoRepository, never()).save(any(Todo.class));
     }
 
     @Test
     void testToggleCompleted() {
-        // 准备数据
-        boolean initialCompletedStatus = todo1.isCompleted();
-        
-        Todo toggledTodo = new Todo();
-        toggledTodo.setId(todo1.getId());
-        toggledTodo.setTitle(todo1.getTitle());
-        toggledTodo.setDescription(todo1.getDescription());
-        toggledTodo.setCompleted(!initialCompletedStatus);
-        toggledTodo.setDisabled(todo1.isDisabled());
-        toggledTodo.setOwner(normalUser);
-        toggledTodo.setFolder(folder1);
-        toggledTodo.setCreatedAt(todo1.getCreatedAt());
-        toggledTodo.setUpdatedAt(OffsetDateTime.now());
-
-        // 模拟安全上下文和存储库
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(todoRepository.findById(todo1.getId())).thenReturn(Optional.of(todo1));
-        when(todoRepository.save(any(Todo.class))).thenReturn(toggledTodo);
+        
+        boolean initialCompleted = todo1.isCompleted();
+        
+        when(todoRepository.save(any(Todo.class))).thenAnswer(invocation -> {
+            Todo savedTodo = invocation.getArgument(0);
+            savedTodo.setCompleted(!initialCompleted); 
+            return savedTodo; 
+        });
 
-        // 执行测试
         TodoResponse result = todoService.toggleCompleted(todo1.getId());
 
-        // 验证结果
         assertNotNull(result);
-        assertEquals(!initialCompletedStatus, result.isCompleted());
+        assertEquals(todo1.getId(), result.getId());
+        assertEquals(!initialCompleted, result.isCompleted());
+        
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(todoRepository, times(1)).findById(todo1.getId());
+        verify(todoRepository, times(1)).save(todo1);
+    }
+
+    @Test
+    void testToggleCompletedUnauthorized() {
+        when(authentication.getPrincipal()).thenReturn(normalUserDetails);
+        
+        assertThrows(UnauthorizedException.class, () -> {
+            todoService.toggleCompleted(todo3.getId());
+        });
+        
+        verify(todoRepository, times(1)).findById(todo3.getId());
+        verify(todoRepository, never()).save(any(Todo.class));
     }
 
     @Test
     void testDeleteTodo() {
-        // 模拟安全上下文和存储库
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(todoRepository.findById(todo1.getId())).thenReturn(Optional.of(todo1));
-
-        // 执行测试
+        
         todoService.deleteTodo(todo1.getId());
 
-        // 验证待办事项是否被删除
+        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(todoRepository, times(1)).findById(todo1.getId());
         verify(todoRepository, times(1)).delete(todo1);
     }
 
     @Test
     void testDeleteTodoUnauthorized() {
-        // 模拟安全上下文和存储库
-        when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(normalUserDetails);
-        when(authentication.getAuthorities()).thenReturn((Collection) normalAuthorities);
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(todoRepository.findById(todo3.getId())).thenReturn(Optional.of(todo3));
+        
+        assertThrows(UnauthorizedException.class, () -> {
+            todoService.deleteTodo(todo3.getId());
+        });
 
-        // 验证普通用户无法删除不属于自己的待办事项
-        assertThrows(UnauthorizedException.class, () -> todoService.deleteTodo(todo3.getId()));
+        verify(todoRepository, times(1)).findById(todo3.getId());
+        verify(todoRepository, never()).delete(any(Todo.class));
     }
 } 

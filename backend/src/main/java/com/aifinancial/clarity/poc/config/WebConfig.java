@@ -12,8 +12,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * 全局 Web MVC 配置
- * 這個類會統一處理所有控制器的 CORS 設置，取代在每個控制器上單獨添加 @CrossOrigin
+ * Global Web MVC configuration
+ * This class will handle all controller CORS settings, replacing the @CrossOrigin annotation on each controller
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -22,8 +22,8 @@ public class WebConfig implements WebMvcConfigurer {
     private String[] allowedOrigins;
 
     /**
-     * 配置全局 CORS 規則
-     * @param registry CORS 註冊表
+     * Configure global CORS rules
+     * @param registry CORS registry
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -33,18 +33,18 @@ public class WebConfig implements WebMvcConfigurer {
             .allowedHeaders("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers")
             .exposedHeaders("Authorization")
             .allowCredentials(true)
-            .maxAge(3600); // 1小時的預檢請求緩存
+            .maxAge(3600); // 1 hour pre-flight request cache
     }
     
     /**
-     * Spring Security 會使用的 CORS 配置源
-     * 這個配置與上面的 addCorsMappings 保持一致
+     * Spring Security will use this CORS configuration source
+     * This configuration is consistent with the addCorsMappings method above
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 使用環境變數中的允許來源
+        // Use environment variables for allowed origins
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

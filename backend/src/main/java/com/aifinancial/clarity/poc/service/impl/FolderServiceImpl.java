@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 import com.aifinancial.clarity.poc.dto.request.FolderRequest;
 import com.aifinancial.clarity.poc.dto.response.FolderResponse;
 import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
@@ -113,7 +114,7 @@ public class FolderServiceImpl implements FolderService {
         
         // Check if the current user is the owner or admin
         if (!folder.getOwner().getId().equals(currentUser.getId()) && 
-                !currentUser.getRole().equals(Role.SUPER_ADMIN)) {
+                ! (currentUser.getRole() != null && RoleConstants.ROLE_SUPER_ADMIN.equalsIgnoreCase(currentUser.getRole().getName())) ) {
             throw new UnauthorizedException("Not authorized to delete this folder");
         }
         

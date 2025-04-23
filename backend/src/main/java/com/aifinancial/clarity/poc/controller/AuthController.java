@@ -16,8 +16,11 @@ import com.aifinancial.clarity.poc.dto.request.RegisterRequest;
 import com.aifinancial.clarity.poc.dto.response.ErrorResponse;
 import com.aifinancial.clarity.poc.dto.response.MeResponse;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
+import com.aifinancial.clarity.poc.model.Permission;
+import com.aifinancial.clarity.poc.model.User;
 import com.aifinancial.clarity.poc.security.UserDetailsImpl;
 import com.aifinancial.clarity.poc.service.AuthService;
+import com.aifinancial.clarity.poc.service.UsersService;
 import com.aifinancial.clarity.poc.service.impl.AuthServiceImpl;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,14 +32,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
+import java.util.Collections;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "Authentication", description = "User authentication and registration APIs")
 public class AuthController {
     private final AuthService authService;
+    private final UsersService usersService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UsersService usersService) {
         this.authService = authService;
+        this.usersService = usersService;
     }
 
     @PostMapping("/login")
@@ -94,33 +104,52 @@ public class AuthController {
     
     @GetMapping("/me")
     @Operation(summary = "Get current user", 
-               description = "Returns details about the currently authenticated user")
+               description = "Returns details about the currently authenticated user including role and permissions")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "User details retrieved successfully", 
                      content = @Content(schema = @Schema(implementation = MeResponse.class))),
-        @ApiResponse(responseCode = "401", description = "Not authenticated")
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "404", description = "User not found in database")
     })
     public ResponseEntity<MeResponse> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-            
-            String role = userDetails.getAuthorities().stream()
-                    .findFirst()
-                    .map(authority -> authority.getAuthority().replace("ROLE_", ""))
-                    .orElse("");
-            
-            MeResponse response = new MeResponse(
-                    "Bearer",
-                    userDetails.getId(),
-                    userDetails.getUsername(),
-                    userDetails.getEmail(),
-                    role
-            );
-            
-            return ResponseEntity.ok(response);
+            Long userId = userDetails.getId();
+
+            // Fetch the full User entity using UsersService
+            Optional<User> userOpt = usersService.findUserById(userId);
+
+            for (Permission p : userOpt.get().getRole().getPermissions()) {
+                System.out.println("Permission: " + p.getName());
+            }
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                String roleName = user.getRole() != null ? user.getRole().getName() : "";
+                
+                // Extract permission names from the Role entity
+                Set<String> permissions = user.getRole() != null && user.getRole().getPermissions() != null
+                    ? user.getRole().getPermissions().stream()
+                        .map(Permission::getName)
+                        .collect(Collectors.toSet())
+                    : Collections.emptySet();
+                
+                MeResponse response = new MeResponse(
+                        "Bearer",
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        roleName,
+                        permissions
+                );
+                return ResponseEntity.ok(response);
+            } else {
+                // User found in security context but not in DB (should not happen ideally)
+                return ResponseEntity.status(404).build(); 
+            }
         }
         
+        // Not authenticated
         return ResponseEntity.status(401).build();
     }
     

@@ -304,9 +304,10 @@ public class JwtTokenProvider {
 
     private Claims getAllClaimsFromToken(String token) {
         try {
-            return Jwts.parserBuilder()
+            // Use Jwts.parser() for jjwt 0.11.x
+            return Jwts.parser() 
                     .setSigningKey(rsaPublicKey)
-                    .build()
+                    // Remove .build() as it's not part of the 0.11.x parser chain
                     .parseClaimsJws(token)
                     .getBody();
         } catch (Exception e) {

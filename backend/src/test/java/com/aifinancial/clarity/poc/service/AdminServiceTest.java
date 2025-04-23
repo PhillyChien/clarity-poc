@@ -1,29 +1,27 @@
 package com.aifinancial.clarity.poc.service;
 
 import java.time.OffsetDateTime;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashSet;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import static org.mockito.quality.Strictness.LENIENT;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.aifinancial.clarity.poc.constant.RoleConstants;
 import com.aifinancial.clarity.poc.converter.UserConverter;
 import com.aifinancial.clarity.poc.dto.request.RoleUpdateRequest;
 import com.aifinancial.clarity.poc.dto.response.MessageResponse;
@@ -32,6 +30,7 @@ import com.aifinancial.clarity.poc.exception.BadRequestException;
 import com.aifinancial.clarity.poc.exception.ResourceNotFoundException;
 import com.aifinancial.clarity.poc.model.Role;
 import com.aifinancial.clarity.poc.model.User;
+import com.aifinancial.clarity.poc.repository.RoleRepository;
 import com.aifinancial.clarity.poc.repository.UserRepository;
 import com.aifinancial.clarity.poc.service.impl.AdminServiceImpl;
 
@@ -43,6 +42,9 @@ public class AdminServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
     private UserConverter userConverter;
 
     @InjectMocks
@@ -50,22 +52,29 @@ public class AdminServiceTest {
 
     private User normalUser;
     private User moderatorUser;
-    private User adminUser;
+    private User superAdminUser;
+    private Role normalRoleEntity;
+    private Role moderatorRoleEntity;
+    private Role superAdminRoleEntity;
     private UserResponse normalUserResponse;
     private UserResponse moderatorUserResponse;
-    private UserResponse adminUserResponse;
+    private UserResponse superAdminUserResponse;
+
     private List<User> allUsers;
     private List<UserResponse> allUserResponses;
 
     @BeforeEach
     void setUp() {
-        // 創建測試用戶
+        normalRoleEntity = new Role(1L, RoleConstants.ROLE_NORMAL, new HashSet<>());
+        moderatorRoleEntity = new Role(2L, RoleConstants.ROLE_MODERATOR, new HashSet<>());
+        superAdminRoleEntity = new Role(3L, RoleConstants.ROLE_SUPER_ADMIN, new HashSet<>());
+
         normalUser = new User();
         normalUser.setId(1L);
         normalUser.setUsername("normal_user");
         normalUser.setEmail("normal@example.com");
         normalUser.setPassword("password");
-        normalUser.setRole(Role.NORMAL);
+        normalUser.setRole(normalRoleEntity);
         normalUser.setCreatedAt(OffsetDateTime.now());
         normalUser.setUpdatedAt(OffsetDateTime.now());
 
@@ -74,171 +83,147 @@ public class AdminServiceTest {
         moderatorUser.setUsername("moderator_user");
         moderatorUser.setEmail("moderator@example.com");
         moderatorUser.setPassword("password");
-        moderatorUser.setRole(Role.MODERATOR);
+        moderatorUser.setRole(moderatorRoleEntity);
         moderatorUser.setCreatedAt(OffsetDateTime.now());
         moderatorUser.setUpdatedAt(OffsetDateTime.now());
 
-        adminUser = new User();
-        adminUser.setId(3L);
-        adminUser.setUsername("admin_user");
-        adminUser.setEmail("admin@example.com");
-        adminUser.setPassword("password");
-        adminUser.setRole(Role.SUPER_ADMIN);
-        adminUser.setCreatedAt(OffsetDateTime.now());
-        adminUser.setUpdatedAt(OffsetDateTime.now());
+        superAdminUser = new User();
+        superAdminUser.setId(3L);
+        superAdminUser.setUsername("super_admin_user");
+        superAdminUser.setEmail("superadmin@example.com");
+        superAdminUser.setPassword("password");
+        superAdminUser.setRole(superAdminRoleEntity);
+        superAdminUser.setCreatedAt(OffsetDateTime.now());
+        superAdminUser.setUpdatedAt(OffsetDateTime.now());
 
-        // 創建測試用戶響應
         normalUserResponse = UserResponse.builder()
-                .id(normalUser.getId())
-                .username(normalUser.getUsername())
-                .email(normalUser.getEmail())
-                .role(normalUser.getRole().name())
+                .id(1L)
+                .username("normal_user")
+                .email("normal@example.com")
+                .role(normalRoleEntity.getName())
                 .createdAt(normalUser.getCreatedAt())
                 .updatedAt(normalUser.getUpdatedAt())
                 .build();
 
         moderatorUserResponse = UserResponse.builder()
-                .id(moderatorUser.getId())
-                .username(moderatorUser.getUsername())
-                .email(moderatorUser.getEmail())
-                .role(moderatorUser.getRole().name())
+                .id(2L)
+                .username("moderator_user")
+                .email("moderator@example.com")
+                .role(moderatorRoleEntity.getName())
                 .createdAt(moderatorUser.getCreatedAt())
                 .updatedAt(moderatorUser.getUpdatedAt())
                 .build();
 
-        adminUserResponse = UserResponse.builder()
-                .id(adminUser.getId())
-                .username(adminUser.getUsername())
-                .email(adminUser.getEmail())
-                .role(adminUser.getRole().name())
-                .createdAt(adminUser.getCreatedAt())
-                .updatedAt(adminUser.getUpdatedAt())
+        superAdminUserResponse = UserResponse.builder()
+                .id(3L)
+                .username("super_admin_user")
+                .email("superadmin@example.com")
+                .role(superAdminRoleEntity.getName())
+                .createdAt(superAdminUser.getCreatedAt())
+                .updatedAt(superAdminUser.getUpdatedAt())
                 .build();
 
-        // 創建測試用戶列表
-        allUsers = Arrays.asList(normalUser, moderatorUser, adminUser);
-        allUserResponses = Arrays.asList(normalUserResponse, moderatorUserResponse, adminUserResponse);
+        allUsers = List.of(normalUser, moderatorUser, superAdminUser);
+        allUserResponses = List.of(normalUserResponse, moderatorUserResponse, superAdminUserResponse);
+
+        when(userRepository.findAll()).thenReturn(allUsers);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(normalUser));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(moderatorUser));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(superAdminUser));
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        when(roleRepository.findByName(RoleConstants.ROLE_NORMAL)).thenReturn(Optional.of(normalRoleEntity));
+        when(roleRepository.findByName(RoleConstants.ROLE_MODERATOR)).thenReturn(Optional.of(moderatorRoleEntity));
+        when(roleRepository.findByName(RoleConstants.ROLE_SUPER_ADMIN)).thenReturn(Optional.of(superAdminRoleEntity));
+        when(roleRepository.findByName("INVALID_ROLE")).thenReturn(Optional.empty());
+
+        when(userConverter.toDto(normalUser)).thenReturn(normalUserResponse);
+        when(userConverter.toDto(moderatorUser)).thenReturn(moderatorUserResponse);
+        when(userConverter.toDto(superAdminUser)).thenReturn(superAdminUserResponse);
+        when(userConverter.toDtoList(allUsers)).thenReturn(allUserResponses);
+        when(userConverter.toDtoList(Collections.emptyList())).thenReturn(Collections.emptyList());
+        when(userConverter.toDtoList(List.of(normalUser))).thenReturn(List.of(normalUserResponse));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
+    @DisplayName("getAllUsers - Success")
     void testGetAllUsers() {
-        // 模擬存儲庫和轉換器
-        when(userRepository.findAll()).thenReturn(allUsers);
-        when(userConverter.toDtoList(allUsers)).thenReturn(allUserResponses);
-
-        // 執行測試
         List<UserResponse> result = adminService.getAllUsers();
-
-        // 驗證結果
         assertNotNull(result);
         assertEquals(3, result.size());
-        assertEquals(normalUserResponse.getId(), result.get(0).getId());
-        assertEquals(normalUserResponse.getUsername(), result.get(0).getUsername());
-        
-        // 驗證方法調用
+        assertEquals(allUserResponses, result);
         verify(userRepository, times(1)).findAll();
         verify(userConverter, times(1)).toDtoList(allUsers);
     }
 
     @Test
-    void testUpdateUserRoleToModerator() {
-        // 準備測試數據
-        RoleUpdateRequest request = new RoleUpdateRequest();
-        request.setUserId(normalUser.getId());
-        request.setRole("MODERATOR");
+    @DisplayName("updateUserRole - Success (Normal to Moderator)")
+    void testUpdateUserRole_Success() {
+        Long userIdToUpdate = normalUser.getId();
+        String targetRoleName = RoleConstants.ROLE_MODERATOR;
+        RoleUpdateRequest request = new RoleUpdateRequest(userIdToUpdate, targetRoleName);
 
-        // 模擬存儲庫
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-        when(userRepository.save(any(User.class))).thenReturn(normalUser);
+        MessageResponse response = adminService.updateUserRole(request);
 
-        // 執行測試
-        MessageResponse result = adminService.updateUserRole(request);
+        assertNotNull(response);
+        assertTrue(response.getMessage().contains(moderatorRoleEntity.getName()), "Response message should contain the new role name");
 
-        // 驗證結果
-        assertNotNull(result);
-        assertTrue(result.getMessage().contains("successfully"));
-        assertEquals(Role.MODERATOR, normalUser.getRole());
-        
-        // 驗證方法調用
-        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(userRepository, times(1)).findById(userIdToUpdate);
+        verify(roleRepository, times(1)).findByName(targetRoleName.toUpperCase());
         verify(userRepository, times(1)).save(normalUser);
+        assertEquals(moderatorRoleEntity, normalUser.getRole(), "User's Role entity should be updated");
+        assertEquals(targetRoleName, normalUser.getRole().getName(), "User's role name should be updated");
+        verify(userConverter, never()).toDto(any(User.class));
     }
 
     @Test
-    void testUpdateUserRoleToNormal() {
-        // 準備測試數據
-        RoleUpdateRequest request = new RoleUpdateRequest();
-        request.setUserId(moderatorUser.getId());
-        request.setRole("NORMAL");
+    @DisplayName("updateUserRole - Failure (User Not Found)")
+    void testUpdateUserRole_UserNotFound() {
+        Long nonExistentUserId = 99L;
+        RoleUpdateRequest request = new RoleUpdateRequest(nonExistentUserId, RoleConstants.ROLE_MODERATOR);
 
-        // 模擬存儲庫
-        when(userRepository.findById(moderatorUser.getId())).thenReturn(Optional.of(moderatorUser));
-        when(userRepository.save(any(User.class))).thenReturn(moderatorUser);
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
+            adminService.updateUserRole(request);
+        });
+        assertTrue(exception.getMessage().contains("User not found with ID: 99"));
 
-        // 執行測試
-        MessageResponse result = adminService.updateUserRole(request);
-
-        // 驗證結果
-        assertNotNull(result);
-        assertTrue(result.getMessage().contains("successfully"));
-        assertEquals(Role.NORMAL, moderatorUser.getRole());
-        
-        // 驗證方法調用
-        verify(userRepository, times(1)).findById(moderatorUser.getId());
-        verify(userRepository, times(1)).save(moderatorUser);
-    }
-
-    @Test
-    void testUpdateUserRoleToSuperAdmin() {
-        // 準備測試數據
-        RoleUpdateRequest request = new RoleUpdateRequest();
-        request.setUserId(normalUser.getId());
-        request.setRole("SUPER_ADMIN");
-
-        // 模擬存儲庫
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
-
-        // 執行測試並驗證異常
-        assertThrows(AccessDeniedException.class, () -> adminService.updateUserRole(request));
-        
-        // 驗證方法調用
-        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(userRepository, times(1)).findById(nonExistentUserId);
+        verify(roleRepository, never()).findByName(anyString());
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void testUpdateUserRoleInvalidRole() {
-        // 準備測試數據
-        RoleUpdateRequest request = new RoleUpdateRequest();
-        request.setUserId(normalUser.getId());
-        request.setRole("INVALID_ROLE");
+    @DisplayName("updateUserRole - Failure (Role Not Found)")
+    void testUpdateUserRole_RoleNotFound() {
+        Long userIdToUpdate = normalUser.getId();
+        String invalidRoleName = "INVALID_ROLE";
+        RoleUpdateRequest request = new RoleUpdateRequest(userIdToUpdate, invalidRoleName);
 
-        // 模擬存儲庫
-        when(userRepository.findById(normalUser.getId())).thenReturn(Optional.of(normalUser));
+        BadRequestException exception = assertThrows(BadRequestException.class, () -> {
+            adminService.updateUserRole(request);
+        });
+        assertTrue(exception.getMessage().contains("Invalid role: " + invalidRoleName));
 
-        // 執行測試並驗證異常
-        assertThrows(BadRequestException.class, () -> adminService.updateUserRole(request));
-        
-        // 驗證方法調用
-        verify(userRepository, times(1)).findById(normalUser.getId());
+        verify(userRepository, times(1)).findById(userIdToUpdate);
+        verify(roleRepository, times(1)).findByName(invalidRoleName.toUpperCase());
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void testUpdateUserRoleUserNotFound() {
-        // 準備測試數據
-        RoleUpdateRequest request = new RoleUpdateRequest();
-        request.setUserId(999L); // 不存在的ID
-        request.setRole("MODERATOR");
+    @DisplayName("updateUserRole - Failure (Cannot Promote to SUPER_ADMIN)")
+    void testUpdateUserRole_CannotPromoteToSuperAdmin() {
+        Long userIdToUpdate = moderatorUser.getId();
+        String targetRoleName = RoleConstants.ROLE_SUPER_ADMIN;
+        RoleUpdateRequest request = new RoleUpdateRequest(userIdToUpdate, targetRoleName);
 
-        // 模擬存儲庫
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
+            adminService.updateUserRole(request);
+        });
+        assertEquals("Cannot promote users to SUPER_ADMIN role", exception.getMessage());
 
-        // 執行測試並驗證異常
-        assertThrows(ResourceNotFoundException.class, () -> adminService.updateUserRole(request));
-        
-        // 驗證方法調用
-        verify(userRepository, times(1)).findById(999L);
+        verify(userRepository, times(1)).findById(userIdToUpdate);
+        verify(roleRepository, times(1)).findByName(targetRoleName.toUpperCase());
         verify(userRepository, never()).save(any(User.class));
     }
 } 
