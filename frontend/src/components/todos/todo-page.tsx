@@ -7,7 +7,7 @@ import { CreateFolderModal } from "@/components/todos/create-folder-modal";
 import { DeleteTodoModal } from "@/components/todos/delete-todo-modal";
 import { FolderTree } from "@/components/todos/folder-tree";
 import { ItemDetailView } from "@/components/todos/item-detail-view";
-import { useAuth, usePermission } from "@/modules/auth";
+import { useAuth, useRole } from "@/modules/auth";
 import { useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
 import { useTodoStore } from "@/store/todo.store";
@@ -17,7 +17,7 @@ import { UserListSidebar } from "../users/user-list-sidebar";
 export function TodoPage() {
 	// Authentication and user state
 	const { user } = useAuth();
-	const { hasPermission } = usePermission();
+	const { hasPermission } = useRole();
 
 	// 检查是否有查看用户列表的权限
 	const canViewUserList = hasPermission("users.view");

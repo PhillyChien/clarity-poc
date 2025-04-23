@@ -1,5 +1,4 @@
-import { useAuth } from "@/modules/auth";
-import { ProtectedRoute } from "@/modules/auth/role.store";
+import { useAuth, ProtectedRoute } from "@/modules/auth";
 import LoginPage from "@/page/login/login";
 import RegisterPage from "@/page/register/register";
 import TodosPage from "@/page/todos/todos";
@@ -13,7 +12,6 @@ import {
 } from "react-router";
 
 import Clarity from "@microsoft/clarity";
-
 
 // Add AuthListener component to listen for authentication status changes globally
 function AuthListener() {
@@ -53,12 +51,10 @@ function App() {
 				<Route path="/register" element={<RegisterPage />} />
 				<Route
 					path="/todos"
-					element={
-						<ProtectedRoute>
-							<TodosPage />
-						</ProtectedRoute>
-					}
-				/>
+					element={<ProtectedRoute />}
+				>
+					<Route index element={<TodosPage />} />
+				</Route>
 			</Routes>
 		</>
 	);

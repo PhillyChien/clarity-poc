@@ -1,17 +1,24 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../../services/backend";
-import type { User } from "../../services/backend/types";
-import type { UserRole } from "./types";
+import type { User, UserRole, Permission } from "../../services/backend/types";
 
-// Forward declare role store to avoid circular dependency
+// Forward declare role store functions to avoid circular dependency
 let setCurrentRole: ((role: UserRole | null) => void) | null = null;
+let setCurrentPermissions: ((permissions: Permission[]) => void) | null = null;
 
 // Function to be called by role store to set its setCurrentRole function
 export const registerRoleStoreSetCurrentRole = (
 	fn: (role: UserRole | null) => void,
 ) => {
 	setCurrentRole = fn;
+};
+
+// Function to be called by role store to set its setCurrentPermissions function
+export const registerRoleStoreSetCurrentPermissions = (
+	fn: (permissions: Permission[]) => void,
+) => {
+	setCurrentPermissions = fn;
 };
 
 interface AuthState {
@@ -47,10 +54,10 @@ export const useAuthStore = create<AuthState>()(
 				try {
 					set({ isLoading: true, error: null });
 
-					// 先調用登錄接口
+					// Call the login API first
 					await authService.login({ username, password });
 
-					// 再獲取用戶信息
+					// Get user information
 					const userInfo = await authService.getCurrentUser();
 
 					set({
@@ -62,7 +69,13 @@ export const useAuthStore = create<AuthState>()(
 
 					// Update role in role store
 					if (setCurrentRole) {
-						setCurrentRole(userInfo.role as UserRole);
+						setCurrentRole(userInfo.role);
+					}
+					
+					// Update the permissions list in the role store
+					if (setCurrentPermissions && userInfo.permissions) {
+						// Use the type conversion function to convert the string array to the Permission array
+						setCurrentPermissions(userInfo.permissions);
 					}
 				} catch (error) {
 					set({
@@ -76,6 +89,11 @@ export const useAuthStore = create<AuthState>()(
 					if (setCurrentRole) {
 						setCurrentRole(null);
 					}
+					
+					// 清空权限列表
+					if (setCurrentPermissions) {
+						setCurrentPermissions([]);
+					}
 				}
 			},
 
@@ -84,10 +102,10 @@ export const useAuthStore = create<AuthState>()(
 				try {
 					set({ isLoading: true, error: null });
 
-					// 先调用注册接口
+					// Call the registration interface first
 					await authService.register({ username, email, password });
 
-					// 注册成功后获取用户信息
+					// Get user information after successful registration
 					const userInfo = await authService.getCurrentUser();
 
 					set({
@@ -99,7 +117,13 @@ export const useAuthStore = create<AuthState>()(
 
 					// Update role in role store
 					if (setCurrentRole) {
-						setCurrentRole(userInfo.role as UserRole);
+						setCurrentRole(userInfo.role);
+					}
+					
+					// Update the permissions list in the role store
+					if (setCurrentPermissions && userInfo.permissions) {
+						// Use the type conversion function to convert the string array to the Permission array
+						setCurrentPermissions(userInfo.permissions);
 					}
 				} catch (error) {
 					set({
@@ -114,13 +138,18 @@ export const useAuthStore = create<AuthState>()(
 					if (setCurrentRole) {
 						setCurrentRole(null);
 					}
+					
+					// Clear the permissions list
+					if (setCurrentPermissions) {
+						setCurrentPermissions([]);
+					}
 				}
 			},
 
 			// Logout action
 			logout: async () => {
 				try {
-					// 调用后端注销接口清除 Cookie
+					// Call the backend logout interface to clear the Cookie
 					await authService.logout();
 				} catch (error) {
 					console.error("Logout failed", error);
@@ -135,6 +164,11 @@ export const useAuthStore = create<AuthState>()(
 					if (setCurrentRole) {
 						setCurrentRole(null);
 					}
+					
+					// Clear the permissions list
+					if (setCurrentPermissions) {
+						setCurrentPermissions([]);
+					}
 				}
 			},
 
@@ -142,7 +176,7 @@ export const useAuthStore = create<AuthState>()(
 			checkAuth: async () => {
 				try {
 					set({ isLoading: true });
-					// 通过 authService.getCurrentUser 接口获取当前用户信息
+					// Get the current user information through the authService.getCurrentUser interface
 					const userInfo = await authService.getCurrentUser();
 
 					set({
@@ -154,23 +188,34 @@ export const useAuthStore = create<AuthState>()(
 
 					// Update role in role store
 					if (setCurrentRole) {
-						setCurrentRole(userInfo.role as UserRole);
+						setCurrentRole(userInfo.role);
+					}
+					
+					// Update the permissions list in the role store
+					if (setCurrentPermissions && userInfo.permissions) {
+						// Use the type conversion function to convert the string array to the Permission array
+						setCurrentPermissions(userInfo.permissions);
 					}
 				} catch (error) {
-					// 不显示错误信息，因为这是自动检查
+					// Do not display error information, because this is an automatic check
 					console.debug("Auth check failed:", error);
 
-					// 如果未认证或发生错误，清空状态
+					// If not authenticated or an error occurs, clear the status
 					set({
 						isAuthenticated: false,
 						user: null,
 						isLoading: false,
-						error: null, // 不设置错误消息
+						error: null, // Do not set an error message
 					});
 
 					// Clear role in role store
 					if (setCurrentRole) {
 						setCurrentRole(null);
+					}
+					
+					// Clear the permissions list
+					if (setCurrentPermissions) {
+						setCurrentPermissions([]);
 					}
 				}
 			},
@@ -184,7 +229,17 @@ export const useAuthStore = create<AuthState>()(
 
 				// Update role in role store when user is updated
 				if (setCurrentRole) {
-					setCurrentRole(user?.role as UserRole | null);
+					setCurrentRole(user?.role || null);
+				}
+				
+				// Update the permissions list in the role store
+				if (setCurrentPermissions) {
+					if (user && user.permissions) {
+						// Use the type conversion function to convert the string array to the Permission array
+						setCurrentPermissions(user.permissions);
+					} else {
+						setCurrentPermissions([]);
+					}
 				}
 			},
 

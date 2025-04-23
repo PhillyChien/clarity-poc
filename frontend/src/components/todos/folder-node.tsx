@@ -16,7 +16,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useAuth, usePermission } from "@/modules/auth";
+import { useAuth, useRole } from "@/modules/auth";
 import type { Folder as FolderType, Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
@@ -93,7 +93,7 @@ export function FolderNode({
 	const { openAddTodoModal } = useTodoTreeStore();
 
 	// 使用权限系统
-	const { hasPermission } = usePermission();
+	const { hasPermission } = useRole();
 	const { user } = useAuth();
 	// 检查是否是文件夹所有者
 	const isOwner = folder ? user?.id === folder.ownerId : false;

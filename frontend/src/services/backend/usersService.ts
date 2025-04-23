@@ -5,6 +5,7 @@ import type {
 	RoleUpdateRequest,
 	Todo,
 	UserResponse,
+	UserRole
 } from "./types";
 
 /**
@@ -18,7 +19,7 @@ export const usersService = {
 	 * @returns 用戶數組
 	 */
 	getAllUsers: (): Promise<UserResponse[]> => {
-		return apiClient.get<UserResponse[]>("/users");
+		return apiClient.get<UserResponse[]>("/api/users");
 	},
 
 	/**
@@ -28,12 +29,12 @@ export const usersService = {
 	 * @param role 要設置的角色名稱
 	 * @returns 操作響應消息
 	 */
-	updateUserRole: (userId: number, role: string): Promise<MessageResponse> => {
+	updateUserRole: (userId: number, role: UserRole): Promise<MessageResponse> => {
 		const request: RoleUpdateRequest = {
 			userId,
 			role,
 		};
-		return apiClient.post<MessageResponse>("/users/role", request);
+		return apiClient.put<MessageResponse>("/api/users/role", request);
 	},
 
 	/**

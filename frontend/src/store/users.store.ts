@@ -1,6 +1,6 @@
 "use client";
 
-import type { MessageResponse, UserResponse } from "@/services/backend/types";
+import type { MessageResponse, UserResponse, UserRole } from "@/services/backend/types";
 import { usersService } from "@/services/backend/usersService";
 import { create } from "zustand";
 
@@ -13,7 +13,7 @@ interface UsersState {
 	fetchAllUsers: () => Promise<void>;
 	updateUserRole: (
 		userId: number,
-		role: string,
+		role: UserRole,
 	) => Promise<MessageResponse | undefined>;
 	disableTodo: (todoId: number) => Promise<void>;
 	enableTodo: (todoId: number) => Promise<void>;
@@ -40,7 +40,7 @@ export const useUsersStore = create<UsersState>((set) => ({
 	},
 
 	// 更新用户角色
-	updateUserRole: async (userId: number, role: string) => {
+	updateUserRole: async (userId: number, role: UserRole) => {
 		try {
 			set({ isLoading: true, error: null });
 			const response = await usersService.updateUserRole(userId, role);

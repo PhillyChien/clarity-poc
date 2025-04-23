@@ -8,7 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useAuth, usePermission } from "@/modules/auth";
+import { useAuth, useRole } from "@/modules/auth";
 import type { Todo } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useTodoStore } from "@/store/todo.store";
@@ -37,7 +37,7 @@ export const TodoNode = memo(function TodoNode({
 	const { openDeleteTodoModal, openBanTodoModal, setSelectedItem } =
 		useTodoTreeStore();
 	const { toggleTodoCompletion } = useTodoStore();
-	const { hasPermission } = usePermission();
+	const { hasPermission } = useRole();
 	const { user } = useAuth();
 
 	// Check if current user is the owner of this todo

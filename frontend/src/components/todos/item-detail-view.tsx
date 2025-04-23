@@ -2,7 +2,7 @@
 
 import { TodoDetailForm } from "@/components/todos/todo-detail-form";
 import { Button } from "@/components/ui/button";
-import { useAuth, usePermission } from "@/modules/auth";
+import { useAuth, useRole } from "@/modules/auth";
 import type { Folder, Todo, UpdateTodoRequest } from "@/services/backend/types";
 import { useTodoStore, useTodoTreeStore } from "@/store";
 import { useFolderStore } from "@/store/folder.store";
@@ -22,7 +22,7 @@ export function ItemDetailView({
 
 	// Authentication and permissions
 	const { user } = useAuth();
-	const { hasPermission } = usePermission();
+	const { hasPermission } = useRole();
 
 	// Store
 	const { selectedItemId, selectedItemType, openAddTodoModal } =

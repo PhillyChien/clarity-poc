@@ -22,8 +22,8 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { usePermission } from "@/modules/auth";
-import type { UserResponse } from "@/services/backend/types";
+import { useRole } from "@/modules/auth";
+import type { UserResponse, UserRole } from "@/services/backend/types";
 import { useUsersStore } from "@/store/users.store";
 import { useEffect, useState } from "react";
 
@@ -37,7 +37,7 @@ export function UserManagementModal({
 	onClose,
 }: UserManagementModalProps) {
 	const { users, isLoading, error, fetchAllUsers } = useUsersStore();
-	const { hasPermission } = usePermission();
+	const { hasPermission } = useRole();
 	const canManageUsers = hasPermission("users.manage");
 
 	// Fetch all users when the modal opens
@@ -148,7 +148,7 @@ function RoleSelector({ user }: { user: UserResponse }) {
 		return <span className="text-sm text-muted-foreground">Cannot modify</span>;
 	}
 
-	const handleRoleChange = async (value: string) => {
+	const handleRoleChange = async (value: UserRole) => {
 		if (user.role === value) return;
 
 		setIsUpdating(true);

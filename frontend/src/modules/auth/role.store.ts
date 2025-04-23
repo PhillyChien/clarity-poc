@@ -1,13 +1,14 @@
-import { useEffect } from "react";
-import type React from "react";
-import { useNavigate } from "react-router";
 import { create } from "zustand";
-import { getCurrentUser, registerRoleStoreSetCurrentRole } from "./auth.store";
-import type { UserRole } from "./types";
+import { getCurrentUser, registerRoleStoreSetCurrentRole, registerRoleStoreSetCurrentPermissions } from "./auth.store";
+import { UserRole, Permission } from "../../services/backend/types";
+
 
 interface RoleState {
-	// Current role (derived from auth store)
+	// Current role
 	currentRole: UserRole | null;
+
+	// Current permissions
+	currentPermissions: Permission[];
 
 	// Role check methods
 	hasRole: (role: UserRole) => boolean;
@@ -24,10 +25,19 @@ interface RoleState {
 
 	// Add method to set the current role directly
 	setCurrentRole: (role: UserRole | null) => void;
+	
+	// Set the current user's permission list - use the Permission type to enhance type safety
+	setCurrentPermissions: (permissions: Permission[]) => void;
+
+	// Permission methods
+	hasPermission: (permission: Permission) => boolean;
+	hasAnyPermission: (permissions: Permission[]) => boolean;
+	hasAllPermissions: (permissions: Permission[]) => boolean;
 }
 
 export const useRoleStore = create<RoleState>()((set, get) => ({
 	currentRole: null,
+	currentPermissions: [],
 
 	hasRole: (role: UserRole): boolean => {
 		const user = getCurrentUser();
@@ -85,15 +95,40 @@ export const useRoleStore = create<RoleState>()((set, get) => ({
 	setCurrentRole: (role: UserRole | null) => {
 		set({ currentRole: role });
 	},
+	
+	// Method to set the current permissions
+	setCurrentPermissions: (permissions: Permission[]) => {
+		set({ currentPermissions: permissions });
+	},
+
+	// Permission methods - 只使用后端返回的权限列表
+	hasPermission: (permission: Permission): boolean => {
+		const { currentPermissions } = get();
+		
+		// Check if the permission is in the list returned by the backend
+		return currentPermissions.includes(permission);
+	},
+
+	hasAnyPermission: (permissions: Permission[]): boolean => {
+		return permissions.some((permission) => get().hasPermission(permission));
+	},
+
+	hasAllPermissions: (permissions: Permission[]): boolean => {
+		return permissions.every((permission) => get().hasPermission(permission));
+	},
 }));
 
 // Register the setCurrentRole function with auth store to avoid circular dependency
 registerRoleStoreSetCurrentRole(useRoleStore.getState().setCurrentRole);
 
+// Register the setCurrentPermissions function with auth store to avoid circular dependency
+registerRoleStoreSetCurrentPermissions(useRoleStore.getState().setCurrentPermissions);
+
 // Provide a Hook for use in components
 export function useRole() {
 	const {
 		currentRole,
+		currentPermissions,
 		hasRole,
 		isAdmin,
 		isModerator,
@@ -101,10 +136,15 @@ export function useRole() {
 		canAccessRoleLevel,
 		compareRoles,
 		setCurrentRole,
+		setCurrentPermissions,
+		hasPermission,
+		hasAnyPermission,
+		hasAllPermissions,
 	} = useRoleStore();
 
 	return {
 		currentRole,
+		currentPermissions,
 		hasRole,
 		isAdmin,
 		isModerator,
@@ -112,43 +152,14 @@ export function useRole() {
 		canAccessRoleLevel,
 		compareRoles,
 		setCurrentRole,
+		setCurrentPermissions,
 		// Helper to get current role with type safety
 		getCurrentRole: () => currentRole,
+		// Permission methods
+		hasPermission,
+		hasAnyPermission,
+		hasAllPermissions,
 	};
-}
-
-// Role-based protected route component
-export function ProtectedRoute({
-	children,
-	requiredRole = "NORMAL",
-}: {
-	children: React.ReactNode;
-	requiredRole?: UserRole;
-}): React.ReactNode {
-	const navigate = useNavigate();
-	// We'll now use our auth function directly
-	const isAuthenticated = !!getCurrentUser();
-	const { hasRole } = useRole();
-
-	useEffect(() => {
-		// Redirect to login page if not authenticated
-		if (!isAuthenticated) {
-			navigate("/login");
-			return;
-		}
-
-		// Redirect to todos page if authenticated but doesn't have required role
-		if (!hasRole(requiredRole)) {
-			navigate("/todos");
-		}
-	}, [isAuthenticated, requiredRole, navigate, hasRole]);
-
-	// Don't render children if not authenticated or doesn't have required role
-	if (!isAuthenticated || !hasRole(requiredRole)) {
-		return null;
-	}
-
-	return children;
 }
 
 // Utility function to get role name

@@ -1,3 +1,31 @@
+// Role types for type safety
+export type UserRole = "NORMAL" | "MODERATOR" | "SUPER_ADMIN";
+
+// Define all permissions
+export type Permission =
+	// Task-related permissions - for own tasks
+	| "todos.own.view"
+	| "todos.own.create"
+	| "todos.own.edit"
+	| "todos.own.delete"
+
+	// Task-related permissions - for others' tasks
+	| "todos.others.view"
+	| "todos.others.ban"
+
+	// Folder-related permissions - for own folders
+	| "folders.own.view"
+	| "folders.own.create"
+	| "folders.own.edit"
+	| "folders.own.delete"
+
+	// Folder-related permissions - for others' folders
+	| "folders.others.view"
+
+	// User-related permissions
+	| "users.view"
+	| "users.manage";
+
 // 认证相关类型
 export interface LoginRequest {
 	username: string;
@@ -16,7 +44,8 @@ export interface MeResponse {
 	id: number;
 	username: string;
 	email: string;
-	role: string;
+	role: UserRole; // 强类型的角色
+	permissions: Permission[]; // 强类型的权限列表
 }
 
 // 用户对象
@@ -24,7 +53,8 @@ export interface User extends Omit<MeResponse, "type"> {
 	id: number;
 	username: string;
 	email: string;
-	role: string;
+	role: UserRole; // 强类型的角色
+	permissions: Permission[]; // 强类型的权限列表
 }
 
 // 文件夹相关类型
@@ -83,7 +113,7 @@ export interface UserResponse {
 	id: number;
 	username: string;
 	email: string;
-	role: string;
+	role: UserRole; // 强类型的角色
 	createdAt: string;
 	updatedAt: string;
 }
@@ -91,7 +121,7 @@ export interface UserResponse {
 // 角色更新请求
 export interface RoleUpdateRequest {
 	userId: number;
-	role: string;
+	role: UserRole; // 强类型的角色
 }
 
 // 消息响应类型

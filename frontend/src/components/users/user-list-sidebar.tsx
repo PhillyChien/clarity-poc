@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { usePermission } from "@/modules/auth";
+import { useRole } from "@/modules/auth";
 import type { UserResponse } from "@/services/backend/types";
 import { useTodoTreeStore } from "@/store";
 import { useUsersStore } from "@/store/users.store";
@@ -23,7 +23,7 @@ export function UserListSidebar({
 	onClearSelection,
 }: UserListSidebarProps) {
 	const { users, isLoading, error, fetchAllUsers } = useUsersStore();
-	const { hasPermission } = usePermission();
+	const { hasPermission } = useRole();
 	const canManageUsers = hasPermission("users.manage");
 	const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
 
